@@ -119,5 +119,5 @@ stable_baselines2
 scenario/area.xml
 scenario/loop.xml
 scenario/outputEmission.xml
-scenario/outputMeanData.xml
+scenario/outputMeandata.xml
 outputSSM.xml
