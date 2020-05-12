@@ -20,12 +20,15 @@ test SUMO via ...
 
 
 ### Set up conda env
-'''
+
+```
 conda env create -f environment.yml
 pip install -e .
-'''
+```
 
 ### Run the experiment
-'''
+
+```
 python experiments/simple.py
-'''
+
+```
