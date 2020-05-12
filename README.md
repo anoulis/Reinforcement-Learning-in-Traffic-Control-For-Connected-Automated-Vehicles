@@ -16,3 +16,16 @@ This project aims to train an agent with reinforcement learning to distribute ta
 Note: Make sure to setup your SUMO_HOME variable.
 
 test SUMO via ...
+
+
+
+### Set up conda env
+'''
+conda env create -f environment.yml
+pip install -e .
+'''
+
+### Run the experiment
+'''
+python experiments/simple.py
+'''
