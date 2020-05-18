@@ -31,6 +31,10 @@ MANIFEST
 *.manifest
 *.spec
 
+# eclipse project files
+.project
+.pydevproject
+
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
@@ -111,8 +115,12 @@ settings.json
 
 stable_baselines2
 
-## sumo
+# sumo outputs
 scenario/area.xml
 scenario/loop.xml
 scenario/outputEmission.xml
 scenario/outputMeandata.xml
+outputSSM.xml
+
+#saved model file
+dnq_sample.zip
