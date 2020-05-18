@@ -114,3 +114,5 @@ stable_baselines2
 ## sumo
 scenario/area.xml
 scenario/loop.xml
+scenario/outputEmission.xml
+scenario/outputMeandata.xml

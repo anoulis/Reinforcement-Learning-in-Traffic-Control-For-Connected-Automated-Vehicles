@@ -4,13 +4,22 @@ import os
 # 2 = INFO and WARNING messages are not printed
 # 3 = INFO, WARNING, and ERROR messages are not printed
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1" # temporaly disable gpu
+
 import gym
 import numpy as np
-import tensorflow as tf
-from datetime import datetime
+import multiprocessing as mp #may use multiprocessing
 
-from stable_baselines.deepq import DQN, MlpPolicy
+import tensorflow as tf
+# import tensorflow.compat.v1 as tf
+from datetime import datetime
+import random
+from collections import deque
+from stable_baselines.deepq import DQN, MlpPolicy, LnCnnPolicy, LnMlpPolicy
 from stable_baselines.common.env_checker import check_env
+from stable_baselines.deepq.policies import DQNPolicy
+from stable_baselines.common.policies import CnnLnLstmPolicy
+from stable_baselines.common.buffers import ReplayBuffer, PrioritizedReplayBuffer
 
 import argparse
 import sys
@@ -22,10 +31,12 @@ else:
 import pandas as pd
 from gym import spaces
 import numpy as np
-# from sumo_rl.environment.env import SumoEnvironment
 import traci
 
+
+
 def main():
+    tf.disable_v2_behavior()
     print('tensorflow version', tf.__version__)
     print(gym.__version__)
     parser = argparse.ArgumentParser(description='Process some entries.')
@@ -43,9 +54,9 @@ def main():
                         default=['scenario/vTypesCAVToC_OS.add.xml','scenario/vTypesCVToC_OS.add.xml','scenario/vTypesLV_OS.add.xml'],
                         help="Route definition xml file.\n")
     parser.add_argument("-gui", action="store_true", default=True, help="Run with visualization on SUMO.\n"),
-    parser.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
+    parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=4000, help="Max simulation steps.\n"),
 
-
+    # parser.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
 
     args = parser.parse_args()
     experiment_time = str(datetime.now()).split('.')[0]
@@ -56,76 +67,48 @@ def main():
                     route_file=args.route,
                     vTypes_files=args.vTypes,
                     use_gui=args.gui,
+                    sim_steps = args.sim_steps,
                     num_seconds=10000,
                     max_depart_delay=0)
-    print("Observation space:", env.observation_space)
-
 
     # It will check your custom environment and output additional warnings if needed
-    check_env(env)
+    # check_env(env)
 
+    # initialization of the training model
+    # mymodel = DQN2(env)
     model = DQN(
         env=env,
-        policy=MlpPolicy,
+        policy=LnMlpPolicy,
+        gamma=0.99,
+        prioritized_replay=True,
         learning_rate=1e-3,
         buffer_size=50000,
         exploration_fraction=0.1,
         exploration_final_eps=0.02
     )
 
-    model.learn(total_timesteps=100000)
+    # execute the training
+    model.learn(total_timesteps=20001)
 
-    obs = env.reset()
-    while True:
-        action, _states = model.predict(obs)
-        obs, rewards, done, info = env.step(action)
-        # env.render()
+    #save, delete and restore model
+    # model.save("dnq_sample")
+    # del model
+    # model = DQN.load("dnq_sample")
+
+    if(args.gui):
+        env.render()
+    observation = env.reset()
+    for t in range(100000):
+        # action = env.action_space.sample()
+        action, _states = model.predict(observation)
+        # action = mymodel.act(observation)
+
+        observation, reward, done, info = env.step(action)
         if done:
-            model.save("out.csv")
+            print("Episode finished after {} timesteps".format(t+1))
+            print("reward " + str(reward))
             break
-
-    # for episode in range(self.num_of_episodes+1):
-    #     state = env.reset()
-    #     state = self.state_reshape(state)
-    #     r = []
-    #     t = 0
-    #     while True:
-    #         action = model.act(state)
-    #         next_state, reward, done, _ = env.step(action)
-    #         next_state = self.state_reshape(next_state)
-    #         self.remember(state, next_state, action, reward, done)
-    #         state = next_state
-    #         r.append(reward)
-    #         t += 1
-    #         if done:
-    #             r = np.mean(r)
-    #             print("episode number: ", episode,", reward: ",r , "time score: ", t)
-    #             self.save_info(episode, r, t)
-    #             break
-    #     self.replay()
-
-
-
-    # for run in range(1, args.runs+1):
-    #     initial_states = env.reset()
-    #
-    #
-    # model.learn(total_timesteps=100000)
-    #
-    # if render: env.render()
-    #
-    # state, rew, reset = env.reset(), 0, False
-    # while not reset:
-    #     state, rew, reset, _ = env.step(action=agent.act(state, rew, reset))
-    # agent.episode_end(env.env_id)
-    # env.close()
-    #
-    # obs = env.reset()
-    # for i in range(1000):
-    #     action, _states = model.predict(obs)
-    #     obs, rewards, dones, info = env.step(action)
-    #     env.render()
-
+    env.close()
 
 if __name__ == '__main__':
     main()
