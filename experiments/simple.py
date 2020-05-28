@@ -5,13 +5,12 @@ import os
 # 3 = INFO, WARNING, and ERROR messages are not printed
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1" # temporaly disable gpu
+os.environ["CUDA_VISIBLE_DEVICES"] = "0" # see gpu
 
 import gym
 import numpy as np
-import multiprocessing as mp #may use multiprocessing
 
 import tensorflow as tf
-# import tensorflow.compat.v1 as tf
 from datetime import datetime
 import random
 from collections import deque
@@ -20,6 +19,9 @@ from stable_baselines.common.env_checker import check_env
 from stable_baselines.deepq.policies import DQNPolicy
 from stable_baselines.common.policies import CnnLnLstmPolicy
 from stable_baselines.common.buffers import ReplayBuffer, PrioritizedReplayBuffer
+from stable_baselines.common.policies import MlpPolicy
+from stable_baselines.common import make_vec_env
+from stable_baselines import A2C
 
 import argparse
 import sys
@@ -33,10 +35,11 @@ from gym import spaces
 import numpy as np
 import traci
 
-
-
 def main():
-    tf.disable_v2_behavior()
+    if tf.test.gpu_device_name():
+        print('Default GPU Device: {}'.format(tf.test.gpu_device_name()))
+    else:
+        print("Please install GPU version of TF")
     print('tensorflow version', tf.__version__)
     print(gym.__version__)
     parser = argparse.ArgumentParser(description='Process some entries.')
@@ -55,6 +58,8 @@ def main():
                         help="Route definition xml file.\n")
     parser.add_argument("-gui", action="store_true", default=True, help="Run with visualization on SUMO.\n"),
     parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=4000, help="Max simulation steps.\n"),
+    parser.add_argument("-trains", dest="trains", type =int, default=15, help="Max trainings.\n"),
+
 
     # parser.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
 
@@ -74,8 +79,7 @@ def main():
     # It will check your custom environment and output additional warnings if needed
     # check_env(env)
 
-    # initialization of the training model
-    # mymodel = DQN2(env)
+    # initialization of the DQN training model
     model = DQN(
         env=env,
         policy=LnMlpPolicy,
@@ -84,16 +88,28 @@ def main():
         learning_rate=1e-3,
         buffer_size=50000,
         exploration_fraction=0.1,
-        exploration_final_eps=0.02
+        exploration_final_eps=0.02,
+        verbose = 0
     )
 
     # execute the training
-    model.learn(total_timesteps=20001)
+    model.learn(total_timesteps=(args.trains*args.sim_steps)+1)
 
-    #save, delete and restore model
-    # model.save("dnq_sample")
+    # save, delete and restore model
+    model.save("dnq_sample")
+    del model
+    model = DQN.load("dnq_sample")
+
+    # # initialization of the A2C training model
+    # model = A2C(MlpPolicy, env, verbose=0, learning_rate=0.0001, lr_schedule='constant')
+    #
+    # # execute the training
+    # model.learn(total_timesteps=(args.trains*args.sim_steps))
+    #
+    # # save, delete and restore model
+    # model.save("a2c_sample")
     # del model
-    # model = DQN.load("dnq_sample")
+    # model = A2C.load("a2c_sample")
 
     if(args.gui):
         env.render()
@@ -101,8 +117,6 @@ def main():
     for t in range(100000):
         # action = env.action_space.sample()
         action, _states = model.predict(observation)
-        # action = mymodel.act(observation)
-
         observation, reward, done, info = env.step(action)
         if done:
             print("Episode finished after {} timesteps".format(t+1))
