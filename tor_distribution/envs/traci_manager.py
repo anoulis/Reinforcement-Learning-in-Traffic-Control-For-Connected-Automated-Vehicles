@@ -345,6 +345,14 @@ class TraciManager():
             veh.speed = traciResults[tc.VAR_SPEED]
             veh.lane = traciResults[tc.VAR_LANE_ID]
 
+    def subscribeState(self,vehID):
+        ''' subscribeState(string) -> None
+        Adds a traci subscription for the vehicle's state (lanePos, speed, laneID)
+        '''
+        # print("subscribeState() for vehicle '%s'"%vehID)
+        traci.vehicle.subscribe(vehID, [tc.VAR_LANE_ID, tc.VAR_LANEPOSITION, tc.VAR_SPEED])
+
+
     def call_runner(self):
         """ Main execution function of the sumo simulation"""
 
@@ -376,7 +384,7 @@ class TraciManager():
             # print("Occupancy of lane %s: %s"%(idx, self.occupancyLevels[idx]))
             # Subscribe to automatic state updates for new vehicle
             for vehID in self.ids:
-                runner.subscribeState(vehID)
+                self.subscribeState(vehID)
 
                 # List of pairs (id, pos), sorted descendingly in pos
                 self.sortedVehPositions = [(i,p) for (p,i) in reversed(sorted(zip(self.positions, self.ids)))]
