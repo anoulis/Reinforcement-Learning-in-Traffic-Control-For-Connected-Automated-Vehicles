@@ -16,6 +16,9 @@ import numpy as np
 import pandas as pd
 from .traci_manager import TraciManager
 import random
+import math
+import matplotlib.pyplot as plt
+
 
 
 class TorEnv(gym.Env):
@@ -27,16 +30,20 @@ class TorEnv(gym.Env):
 
         Observation:
             Type: Box(4)
-            Num	Observation               Min             Max
-            0	Density lane 1           -Inf            Inf
-            1	Density lane 2           -Inf            Inf
-            2	More                     -Inf            Inf
-            3	Another one              -Inf            Inf
+            Num	Observation                Min            Max
+            1	Cells CAV_CV #n           -Inf            Inf
+            2	Celss pendingToCVehs #n   -Inf            Inf
+            3	Celss LVsInToCZone #n     -Inf            Inf
+            4	Cells Average Speed       -Inf            Inf
+            5	Cells Veh Density         -Inf            Inf
         Actions:
             Type: Discrete(2)
             Num	Action
-            0	Not Send ToC message
-            1	Send ToC message
+            1	Send ToC message Cell 1
+            .
+            10  Send ToC message Cell 10
+            11	Not Send ToC message
+
         """
 
         super(TorEnv, self).__init__()
@@ -55,11 +62,8 @@ class TorEnv(gym.Env):
         self.sim_max_steps=sim_steps
         self.sim_max_time=self.sim_max_steps/10.0
         self.use_gui = use_gui
-        # if self.use_gui:
-        #     self._sumo_binary = sumolib.checkBinary('sumo-gui')
-        # else:
-        #     self._sumo_binary = sumolib.checkBinary('sumo')
-
+        self.x = []
+        self.y = []
         self._sumo_binary = sumolib.checkBinary('sumo')
 
         seperator = ', '
@@ -69,15 +73,20 @@ class TorEnv(gym.Env):
                     "-a", addFilesString]
 
         traci.start([sumolib.checkBinary('sumo')] + sumo_args)
-        high = np.array([np.finfo(np.float32).max,
-                        np.finfo(np.float32).max],
-                        dtype=np.float32)
-        self.observation_space = spaces.Box(-high, high, dtype=np.float32)
-        self.action_space = spaces.Discrete(2)
+
+        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(5,10), dtype=np.float32)
+        self.action_space = spaces.Discrete(11)
+
         self.reward_range = (-float('inf'), float('inf'))
         self.run = 0
-        self.metrics = []
         self.myManager = TraciManager()
+        self.density = {}
+        self.occupancy = {}
+        self.meanSpeed = {}
+        self.waitingTime = {}
+        self.trafficJams = {}
+        self.keepAutonomy = {}
+        self.plot = False
         traci.close()
 
 
@@ -89,88 +98,163 @@ class TorEnv(gym.Env):
             self.myManager = TraciManager()
             traci.close()
             self.run = 0
-            # self.save_csv(self.out_csv_name, self.run)
-        # self.run += 1
+        self.run += 1
         self.metrics = []
         self.last_mesauremnt = 0
         self.early = 0
         self.late = 0
+        self.x = []
+        self.y = []
 
         seperator = ', '
         vTypesToString = seperator.join(self._vTypes)
         addFilesString = "scenario/additionalsOutput_trafficMix_0_trafficDemand_1_driverBehaviour_OS_seed_0.xml, "+ vTypesToString + ", scenario/shapes.add.xml, scenario/view.add.xml"
 
         sumo_args = ["-c", self._cfg,
+                     "--random",
                      "-r", self._route,
                      "-a", addFilesString]
-        # if self.use_gui:
-        #     self._sumo_binary = sumolib.checkBinary('sumo-gui')
-
 
         traci.start([self._sumo_binary] + sumo_args)
         return self._compute_observations()
 
-    def _compute_observations(self):
-        """
-        Return the current observation values
-        """
-        # Temp mode
-        observations = []
-        num_av = self.myManager.getVehNum()
-        density= []
-        dets = self.myManager.getAreaDet()
-        lanes = self.myManager.getAreaLanes()
-        for i in range(2):
-            density.append(self.myManager.getLaneVehNum(dets[i]) / traci.lane.getLength(lanes[i]) / 1000.)
-        observations = np.array([density[0],density[1]],dtype=np.float32)
 
-        return observations
+    def _compute_observations(self):
+        av =  self.myManager.getAVperCells()
+        if not av:
+            av = self.myManager.zerolistmaker(10)
+
+        pend =  self.myManager.getPendperCells()
+        if not pend:
+            pend = self.myManager.zerolistmaker(10)
+
+        lv =  self.myManager.getLVperCells()
+        if not lv:
+            lv = self.myManager.zerolistmaker(10)
+
+        speeds = self.myManager.getSpeedPerCells()
+        if not speeds:
+            speeds = self.myManager.zerolistmaker(10)
+
+        density = self.myManager.getDensityPerCells()
+        if not density:
+            density = self.myManager.zerolistmaker(10)
+
+        return np.array([av[:10], pend[:10], lv[:10], speeds[:10], density[:10]], dtype=np.float32)
 
 
     def step(self, action):
         """
         execute environment step
         """
-        self._sumo_step(self._apply_actions(action))
+        self._apply_actions(action)
+        self._sumo_step()
         # observe new state and reward
         observation = self._compute_observations()
-        reward = self._compute_rewards()
+        # print("OBS " + str(observation))
+        reward = self._compute_rewards(action,observation)
         done =  self.myManager.sim_step() >= self.sim_max_time
+        if(done):
+            print(self.myManager.ToC_Per_Cell)
+            if(self.plot):
+                plt.plot(self.x, self.y)
+                plt.xlabel('x - axis - Timestamp')
+                plt.ylabel('y - axis - Mean Speed')
+                plt.title('Line graph!')
+                plt.show()
         info = self._compute_step_info()
-        self.metrics.append(info)
         self.last_reward = reward
 
         return observation, reward, done, info
 
+
     def _apply_actions(self, action):
         """
         apply the actions in the environment
+        More specifically store the activatedCell.
         """
-        if (action == 1):
-            return True
-        else:
-            return False
+        if (action != 11):
+            self.myManager.activatedCell=action
 
-    def _compute_rewards(self):
-        """
-        compute the rewards for every action
 
-        4 for evert early ToC message
-        5 for every CAV/CV not get message before the last 500m of the zone
+    def _compute_rewards(self, action, observation):
         """
-        punishments =  self.myManager.get_late_punishment() + self.myManager.get_early_punishment()
-        reward =  self.last_mesauremnt - punishments
-        self.last_mesauremnt = punishments
+        We compute the rewards base on a specific function.
+        There is also code for the plotting part.
+        """
+        # Store the sum of the Mean speed of the 2 lanes for plotting purposes
+        lanes = self.myManager.getAreaLanes()
+        ms = 0
+        wt = 0
+        for i in range(2):
+            wt += self.myManager.getLaneWait(lanes[i])
+            ms  += self.myManager.getLaneMeanSpeed(lanes[i])
+        self.y.append(ms)
+
+        # Calculate the reward
+        # reward = self.reward_based_on_ToCs(action, observation)
+        # reward = self.reward_based_on_Mean_Speed(action, observation)
+        reward = self.reward_based_on_Density(action, observation)
 
         return reward
 
-    def _sumo_step(self, flag):
+
+    def reward_based_on_ToCs(self, action, observation):
+        """ Calculated reward based on the number of ToCs that we sent """
+        reward = 0
+
+        # punishment for the sum of forced ToCs
+        reward = -(10*self.myManager.get_forced_ToCs())
+
+        if(action != 11):
+            reward += self.myManager.getDecidedToCs()*self.myManager.getCellInfluence(action)
+        else:
+            reward += 0
+
+        return reward
+
+    def reward_based_on_Mean_Speed(self, action, observation):
+        """ Calculated reward based on the mean speed of the lanes """
+        reward = 0
+
+        # punishment for the sum of forced ToCs
+        reward = -(50*self.myManager.get_forced_ToCs())
+
+        lanes = self.myManager.getAreaLanes()
+        ms = 0
+        for i in range(2):
+            ms  += self.myManager.getLaneMeanSpeed(lanes[i])
+
+        if(action != 11):
+            reward += self.myManager.getCellInfluence(action)*ms
+        else:
+            reward += 0.1 * ms
+
+        return reward
+
+    def reward_based_on_Density(self, action, observation):
+        """ Calculated reward based on the densityPerCell """
+        reward = 0
+        densities = []
+        densities = observation[4]
+
+        # punishment for the sum of forced ToCs
+        reward = -(10*self.myManager.get_forced_ToCs())
+        if(action != 11):
+            reward += -densities[action-1] + densities[action-1]*self.myManager.getCellInfluence(action)
+        else:
+            reward += 0
+
+        return reward
+
+
+    def _sumo_step(self):
         """
         execute simulation step
         """
-        self.run += 1
-        pun = self.myManager.call_runner(self.run,flag)
-        return pun
+        self.myManager.call_runner()
+        self.x.append(self.myManager.getStep())
+
 
     def _compute_step_info(self):
         """
@@ -178,21 +262,20 @@ class TorEnv(gym.Env):
         """
         return {
             'step_time': self.myManager.sim_step(),
-            'reward': self.last_reward,
-            'total_trans_msgs': 1,
-            'total_trans_msgs': self.early,
-            'total_trans_msgs': self.late
-        }
+            'reward': self.last_reward
+            }
+
 
     def close(self):
         """
         close the simulation
         """
-        self.run = 0
         traci.close()
+
 
     def render(self):
         """
         load gui for the simulation
         """
         self._sumo_binary = sumolib.checkBinary('sumo-gui')
+        self.plot = True
