@@ -126,3 +126,7 @@ outputSSM.xml
 *.zip
 dnq_sample.zip
 a2c_sample.zip
+
+#extra saving directories
+outputs/
+dqn_tensorboard/
