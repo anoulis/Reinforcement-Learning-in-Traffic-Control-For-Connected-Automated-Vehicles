@@ -58,7 +58,7 @@ def main():
                         help="Route definition xml file.\n")
     parser.add_argument("-gui", action="store_true", default=True, help="Run with visualization on SUMO.\n"),
     parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=4000, help="Max simulation steps.\n"),
-    parser.add_argument("-trains", dest="trains", type =int, default=15, help="Max trainings.\n"),
+    parser.add_argument("-trains", dest="trains", type =int, default=30, help="Max trainings.\n"),
 
 
     # parser.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
@@ -79,25 +79,26 @@ def main():
     # It will check your custom environment and output additional warnings if needed
     # check_env(env)
 
-    # initialization of the DQN training model
-    model = DQN(
-        env=env,
-        policy=LnMlpPolicy,
-        gamma=0.99,
-        prioritized_replay=True,
-        learning_rate=1e-3,
-        buffer_size=50000,
-        exploration_fraction=0.1,
-        exploration_final_eps=0.02,
-        verbose = 0
-    )
-
-    # execute the training
-    model.learn(total_timesteps=(args.trains*args.sim_steps)+1)
-
-    # save, delete and restore model
-    model.save("dnq_sample")
-    del model
+    # # initialization of the DQN training model
+    # model = DQN(
+    #     env=env,
+    #     policy=LnMlpPolicy,
+    #     gamma=0.99,
+    #     prioritized_replay=True,
+    #     learning_rate=1e-3,
+    #     buffer_size=50000,
+    #     exploration_fraction=0.1,
+    #     exploration_final_eps=0.02,
+    #     verbose = 1,
+    #     tensorboard_log="./dqn_tensorboard/"
+    # )
+    #
+    # # execute the training
+    # model.learn(total_timesteps=(args.trains*args.sim_steps))
+    #
+    # # save, delete and restore model
+    # model.save("dnq_sample")
+    # del model
     model = DQN.load("dnq_sample")
 
     # # initialization of the A2C training model
@@ -121,6 +122,7 @@ def main():
         if done:
             print("Episode finished after {} timesteps".format(t+1))
             print("reward " + str(reward))
+            print(info.get("avg_cav_dist"))
             break
     env.close()
 
