@@ -42,7 +42,7 @@ class TorEnv(gym.Env):
             1	Send ToC message Cell 1
             .
             10  Send ToC message Cell 10
-            11	Not Send ToC message
+            0	Not Send ToC message
 
         """
 
@@ -52,7 +52,7 @@ class TorEnv(gym.Env):
         self.lanes_per_cell = None
         self._network = net_file
         self.last_reward = 0
-        self.last_mesauremnt = 0
+        self.last_measurement = 0
         self._route = route_file
         self._vTypes = vTypes_files
         self.early = 0
@@ -87,6 +87,7 @@ class TorEnv(gym.Env):
         self.trafficJams = {}
         self.keepAutonomy = {}
         self.plot = False
+        self.delay = 0
         traci.close()
 
 
@@ -97,14 +98,18 @@ class TorEnv(gym.Env):
         if self.run != 0:
             self.myManager = TraciManager()
             traci.close()
-            self.run = 0
+            self.save_csv("outputs/data", self.run)
+
+
+            # self.run = 0
         self.run += 1
         self.metrics = []
-        self.last_mesauremnt = 0
+        self.last_measurement = 0
         self.early = 0
         self.late = 0
         self.x = []
         self.y = []
+        self.dealy =0
 
         seperator = ', '
         vTypesToString = seperator.join(self._vTypes)
@@ -147,11 +152,18 @@ class TorEnv(gym.Env):
         """
         execute environment step
         """
+
+        # if self.delay<100:
+        #    for i in range(100):
+        #        self.delay +=1
+        #        self._sumo_step()
+        #
+        # else:
         self._apply_actions(action)
         self._sumo_step()
         # observe new state and reward
         observation = self._compute_observations()
-        # print("OBS " + str(observation))
+        # print("OBS " + str(observation[4]))
         reward = self._compute_rewards(action,observation)
         done =  self.myManager.sim_step() >= self.sim_max_time
         if(done):
@@ -162,7 +174,8 @@ class TorEnv(gym.Env):
                 plt.ylabel('y - axis - Mean Speed')
                 plt.title('Line graph!')
                 plt.show()
-        info = self._compute_step_info()
+        info = self._compute_step_info(action)
+        self.metrics.append(info)
         self.last_reward = reward
 
         return observation, reward, done, info
@@ -173,7 +186,7 @@ class TorEnv(gym.Env):
         apply the actions in the environment
         More specifically store the activatedCell.
         """
-        if (action != 11):
+        if (action != 0):
             self.myManager.activatedCell=action
 
 
@@ -194,7 +207,9 @@ class TorEnv(gym.Env):
         # Calculate the reward
         # reward = self.reward_based_on_ToCs(action, observation)
         # reward = self.reward_based_on_Mean_Speed(action, observation)
-        reward = self.reward_based_on_Density(action, observation)
+        # reward = self.reward_based_on_Density(action, observation)
+        reward = self.r(action, observation)
+        # reward = self.reward_based_on_Travel_Time(action, observation)
 
         return reward
 
@@ -206,7 +221,7 @@ class TorEnv(gym.Env):
         # punishment for the sum of forced ToCs
         reward = -(10*self.myManager.get_forced_ToCs())
 
-        if(action != 11):
+        if(action != 0):
             reward += self.myManager.getDecidedToCs()*self.myManager.getCellInfluence(action)
         else:
             reward += 0
@@ -225,7 +240,7 @@ class TorEnv(gym.Env):
         for i in range(2):
             ms  += self.myManager.getLaneMeanSpeed(lanes[i])
 
-        if(action != 11):
+        if(action != 0):
             reward += self.myManager.getCellInfluence(action)*ms
         else:
             reward += 0.1 * ms
@@ -239,13 +254,71 @@ class TorEnv(gym.Env):
         densities = observation[4]
 
         # punishment for the sum of forced ToCs
-        reward = -(10*self.myManager.get_forced_ToCs())
-        if(action != 11):
-            reward += -densities[action-1] + densities[action-1]*self.myManager.getCellInfluence(action)
+        # reward = -(10*self.myManager.get_forced_ToCs())
+        # if(action != 11):
+        #     reward += -densities[action-1] + densities[action-1]*self.myManager.getCellInfluence(action)
+        # else:
+        #     reward += 0
+
+        # different approach
+        pun = self.myManager.get_forced_ToCs()
+        if(pun!=0):
+            reward  = -(pun)
         else:
-            reward += 0
+            if(action != 0):
+                reward = (1-densities[action-1])
+            else:
+                reward = sum(densities)/10
 
         return reward
+
+    def r(self, action, observation):
+        """ Calculated reward based on the ratio between
+        the avg covered distance per cav/cv and TravelTime of the lanes """
+
+        pun = self.myManager.get_forced_ToCs()
+        if(sum(self.myManager.ToC_Per_Cell)!=0):
+            cav_avg = self.myManager.cav_dist/sum(self.myManager.ToC_Per_Cell)
+        else:
+            cav_avg = 0
+        tt=0
+        lanes = self.myManager.getAreaLanes()
+        for i in range(2):
+            tt  += self.myManager.getLaneTravelTime(lanes[i])
+
+        if(pun!=0):
+            reward  = -(pun)
+        else:
+            if(action != 0):
+                reward = cav_avg/tt
+            else:
+                reward = 0
+
+        return reward
+
+    def reward_based_on_Travel_Time(self, action, observation):
+        """ Calculated reward based on the TravelTime of the lanes """
+        reward = 0
+        tt = 0
+        final_reward = 0
+        lanes = self.myManager.getAreaLanes()
+        for i in range(2):
+            tt  += self.myManager.getLaneTravelTime(lanes[i])
+
+        pun = self.myManager.get_forced_ToCs()
+        if(pun!=0):
+            reward  = (pun*200)
+        else:
+            reward = tt
+
+            # if(action != 11):
+            #     reward = (1-self.myManager.getCellInfluence(action))*tt
+            # else:
+            #     reward = 0.9 * tt
+        final_reward = self.last_measurement - reward
+        self.last_measurement = reward
+        return final_reward
+
 
 
     def _sumo_step(self):
@@ -256,13 +329,20 @@ class TorEnv(gym.Env):
         self.x.append(self.myManager.getStep())
 
 
-    def _compute_step_info(self):
+    def _compute_step_info(self,action):
         """
         get information at each simulation step
         """
+        if(sum(self.myManager.ToC_Per_Cell)!=0):
+            cav_avg = self.myManager.cav_dist/sum(self.myManager.ToC_Per_Cell)
+        else:
+            cav_avg = 0
         return {
             'step_time': self.myManager.sim_step(),
-            'reward': self.last_reward
+            'action': action,
+            'avg_cav_dist' : cav_avg,
+            'reward': self.last_reward,
+            'last_measurement': self.last_measurement
             }
 
 
@@ -279,3 +359,10 @@ class TorEnv(gym.Env):
         """
         self._sumo_binary = sumolib.checkBinary('sumo-gui')
         self.plot = True
+
+
+    def save_csv(self, out_csv_name, run):
+        """ save info to csv file """
+        if out_csv_name is not None:
+            df = pd.DataFrame(self.metrics)
+            df.to_csv(out_csv_name + '_run{}'.format(run) + '.csv', index=False)

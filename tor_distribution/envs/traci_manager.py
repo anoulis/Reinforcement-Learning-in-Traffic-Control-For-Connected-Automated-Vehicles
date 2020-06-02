@@ -107,10 +107,13 @@ class TraciManager():
         self.step = 0
         self.sendToCs = 0
         self.ToC_Per_Cell = self.zerolistmaker(10)
+        self.cav_dist = 0
 
 
-    def requestToC(self, vehID, vehCell, timeUntilMRM):
+    def requestToC(self, vehID, vehCell, vehPos, timeUntilMRM):
         self.ToC_Per_Cell[vehCell-1]+=1
+        # it just sum ups the distnace that have covered by ca/cav veh
+        self.cav_dist += vehPos
         # print("ToC for  " + str(vehID) + " at cell " + str(vehCell))
         traci.vehicle.setParameter(vehID, "device.toc.requestToC", str(timeUntilMRM))
 
@@ -204,8 +207,11 @@ class TraciManager():
         for i in range(10):
             sum = self.vehsAVPerCell[i] + self.vehsPendPerCell[i] + self.vehsLVPerCell[i]
             if(i==1 or 1==2):
+                # print(sum/300)
                 self.densityPerCell[i]= sum/300.
             else:
+                # print(sum/500)
+
                 self.densityPerCell[i]= sum/500.
 
     def getDensityPerCells(self):
@@ -283,7 +289,7 @@ class TraciManager():
         for veh in self.CAV_CV:
             if(veh not in self.pendingToCVehs):
                 if(traci.vehicle.getDistance(veh.ID)>2000):
-                    self.requestToC(veh.ID, veh.cell, ToC_lead_times[veh.automationType])
+                    self.requestToC(veh.ID, veh.cell, veh.pos, ToC_lead_times[veh.automationType])
                     self.pendingToCVehs.append(veh)
                     self.CAV_CV.remove(veh)
                     punishment+=1
@@ -324,6 +330,10 @@ class TraciManager():
     def getLaneMeanSpeed(self,lane):
         """ Returns the mean speed of vehs for specific lane"""
         return traci.lane.getLastStepMeanSpeed(lane)
+
+    def getLaneTravelTime(self,lane):
+        """ Returns the mean speed of vehs for specific lane"""
+        return traci.lane.getTraveltime(lane)
 
     def getVehWaitTime(self,veh):
         """ Returns the waitingTime for specific veh"""
@@ -403,8 +413,9 @@ class TraciManager():
                     if self.automationType != 'LV.':
                         # Last entered vehicle is automated
                         assert(self.automationType=="CAVToC." or self.automationType=="CVToC.")
-                        if (self.loopLane != traci.vehicle.getLaneID(ID)):
-                            warn("The detected vehicle's lane differs from entry loop's lane! Please assure that the loop is far enough from the lane end to prevent this situation.")
+                        # temporaly commented as it stops simultation
+                        # if (self.loopLane != traci.vehicle.getLaneID(ID)):
+                        #     warn("The detected vehicle's lane differs from entry loop's lane! Please assure that the loop is far enough from the lane end to prevent this situation.")
                     #                         raise Exception("The detected vehicle's lane differs from entry loop's lane! Please assure that the loop is far enough from the lane end to prevent this situation.")
                         self.CAV_CV.append(veh)
                     else:
@@ -426,10 +437,10 @@ class TraciManager():
         for veh in self.CAV_CV:
             veh.updateCell(self.getCell(veh.pos,veh.lane))
             if(veh not in self.pendingToCVehs):
-                if(self.activatedCell!=11):
+                if(self.activatedCell!=0):
                     if (veh.cell == self.activatedCell):
                         # self.calculate_early_punishment(veh.cell)
-                        self.requestToC(veh.ID, veh.cell, ToC_lead_times[veh.automationType])
+                        self.requestToC(veh.ID, veh.cell, veh.pos, ToC_lead_times[veh.automationType])
                         self.sendToCs += 1
                         self.pendingToCVehs.append(veh)
                         self.CAV_CV.remove(veh)
