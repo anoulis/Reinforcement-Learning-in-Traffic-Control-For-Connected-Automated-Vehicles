@@ -4,7 +4,7 @@ import os
 # 2 = INFO and WARNING messages are not printed
 # 3 = INFO, WARNING, and ERROR messages are not printed
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1" # temporaly disable gpu
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1" # temporaly disable gpu
 os.environ["CUDA_VISIBLE_DEVICES"] = "0" # see gpu
 
 import gym
@@ -60,7 +60,7 @@ def main():
                         default=['scenario/vTypesCAVToC_OS.add.xml','scenario/vTypesCVToC_OS.add.xml','scenario/vTypesLV_OS.add.xml'],
                         help="Route definition xml file.\n")
     parser.add_argument("-gui", action="store_true", default=True, help="Run with visualization on SUMO.\n"),
-    parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=10000, help="Max simulation steps.\n"),
+    parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=48335, help="Max simulation steps.\n"),
     parser.add_argument("-trains", dest="trains", type =int, default=10, help="Max trainings.\n"),
 
 
@@ -107,25 +107,11 @@ def main():
         tensorboard_log="./dqn_tensorboard/"
     )
 
-    # execute the training
+    # execute the training for server model
     model.learn(total_timesteps=(args.trains*args.sim_steps))
-
-    # save, delete and restore model
-    model.save("dnq_sample")
+    model.save("dnq_server")
     del model
-    model = DQN.load("dnq_sample")
-
-    # saved 30 trains model
-    # save, delete and restore model
-    # model.save("dnq_sample3")
-    # del model
-    # model = DQN.load("dnq_sample3")
-
-    # # execute the training for server model
-    # model.learn(total_timesteps=(args.trains*args.sim_steps))
-    # model.save("dnq_server")
-    # del model
-    # model = DQN.load("dnq_server")
+    model = DQN.load("dnq_server")
 
 
     # # initialization of the A2C training model
