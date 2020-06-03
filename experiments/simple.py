@@ -4,7 +4,7 @@ import os
 # 2 = INFO and WARNING messages are not printed
 # 3 = INFO, WARNING, and ERROR messages are not printed
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1" # temporaly disable gpu
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1" # temporaly disable gpu
 os.environ["CUDA_VISIBLE_DEVICES"] = "0" # see gpu
 
 import gym
@@ -67,8 +67,8 @@ def main():
                         help="Route definition xml file.\n")
     parser.add_argument("-gui", action="store_true", default=True, help="Run with visualization on SUMO.\n"),
     parser.add_argument("-plot", action="store_true", default=True, help="Plot graphs.\n"),
-    parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=10000, help="Max simulation steps.\n"),
-    parser.add_argument("-trains", dest="trains", type =int, default=5, help="Max trainings.\n"),
+    parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=48335, help="Max simulation steps.\n"),
+    parser.add_argument("-trains", dest="trains", type =int, default=10, help="Max trainings.\n"),
 
 
     # parser.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
