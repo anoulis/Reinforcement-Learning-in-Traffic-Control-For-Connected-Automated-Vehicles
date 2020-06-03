@@ -108,6 +108,7 @@ class TraciManager():
         self.sendToCs = 0
         self.ToC_Per_Cell = self.zerolistmaker(10)
         self.cav_dist = 0
+        self.forcedToCs = 0
 
 
     def requestToC(self, vehID, vehCell, vehPos, timeUntilMRM):
@@ -294,6 +295,7 @@ class TraciManager():
                     self.CAV_CV.remove(veh)
                     punishment+=1
         self.latePunishment = punishment
+        self.forcedToCs += self.latePunishment
 
     def get_forced_ToCs(self):
         """ Retuns sum of forced ToC"""
