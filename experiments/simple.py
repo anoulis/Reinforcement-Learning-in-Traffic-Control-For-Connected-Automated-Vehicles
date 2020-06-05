@@ -8,8 +8,10 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "-1" # temporaly disable gpu
 os.environ["CUDA_VISIBLE_DEVICES"] = "0" # see gpu
 
 import gym
+gym.logger.set_level(40)
 import numpy as np
-
+import warnings
+warnings.filterwarnings('ignore',category=FutureWarning)
 import tensorflow as tf
 from datetime import datetime
 import random
@@ -39,12 +41,16 @@ import os
 from datetime import datetime
 
 def main():
+    start = time.time()
     if tf.test.gpu_device_name():
         print('Default GPU Device: {}'.format(tf.test.gpu_device_name()))
     else:
-        print("Please install GPU version of TF")
+        print("Please install GPU version of TF or use the GPU")
+
+    tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR)
+
     print('tensorflow version', tf.__version__)
-    print(gym.__version__)
+    print('gym version', gym.__version__)
     parser = argparse.ArgumentParser(description='Process some entries.')
 
     parser.add_argument("-cfg", dest="cfg", type=str,
@@ -60,8 +66,9 @@ def main():
                         default=['scenario/vTypesCAVToC_OS.add.xml','scenario/vTypesCVToC_OS.add.xml','scenario/vTypesLV_OS.add.xml'],
                         help="Route definition xml file.\n")
     parser.add_argument("-gui", action="store_true", default=True, help="Run with visualization on SUMO.\n"),
+    parser.add_argument("-plot", action="store_true", default=True, help="Plot graphs.\n"),
     parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=10000, help="Max simulation steps.\n"),
-    parser.add_argument("-trains", dest="trains", type =int, default=10, help="Max trainings.\n"),
+    parser.add_argument("-trains", dest="trains", type =int, default=5, help="Max trainings.\n"),
 
 
     # parser.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
@@ -86,8 +93,9 @@ def main():
                     vTypes_files=args.vTypes,
                     use_gui=args.gui,
                     sim_steps = args.sim_steps,
-                    num_seconds=10000,
-                    max_depart_delay=0,
+                    trains = args.trains,
+                    plot = args.plot,
+                    delay=100,
                     data_path = path)
 
     # It will check your custom environment and output additional warnings if needed
@@ -108,24 +116,36 @@ def main():
     )
 
     # execute the training
+    print()
+    print("Start the training for", args.trains, "episodes and simulation steps " +str(args.sim_steps) + "\n")
     model.learn(total_timesteps=(args.trains*args.sim_steps))
+    print()
+    elapsed_time = time.time()- start
+    print("Duration of the whole training phase =", time.strftime("%H:%M:%S", time.gmtime(elapsed_time)))
+
 
     # save, delete and restore model
+    print("Save and delete the model \n")
     model.save("dnq_sample")
     del model
-    model = DQN.load("dnq_sample")
+    print("Load the model and start the visualization \n")
+    model = DQN.load("dnq_sample",env)
+    # save, delete and restore model
+    # model.save("dnq_sample2")
+    # del model
+    # model = DQN.load("dnq_sample2",env)
 
     # saved 30 trains model
     # save, delete and restore model
     # model.save("dnq_sample3")
     # del model
-    # model = DQN.load("dnq_sample3")
+    # model = DQN.load("dnq_sample3",env)
 
     # # execute the training for server model
     # model.learn(total_timesteps=(args.trains*args.sim_steps))
     # model.save("dnq_server")
     # del model
-    # model = DQN.load("dnq_server")
+    # model = DQN.load("dnq_server",env)
 
 
     # # initialization of the A2C training model
@@ -137,7 +157,7 @@ def main():
     # # save, delete and restore model
     # model.save("a2c_sample")
     # del model
-    # model = A2C.load("a2c_sample")
+    # model = A2C.load("a2c_sample",env)
 
     if(args.gui):
         env.render()
@@ -151,6 +171,10 @@ def main():
             print("reward " + str(reward))
             break
     env.close()
+    print()
+    elapsed_time = time.time()- start
+    print("Duration of the whole experiment =", time.strftime("%H:%M:%S", time.gmtime(elapsed_time)))
+
 
 if __name__ == '__main__':
     main()
