@@ -254,7 +254,7 @@ class TraciManager():
         elif cell==8 or cell==7:
             return 0.4
         else:
-            return 0.4
+            return 0.5
 
     def zerolistmaker(self,n):
         """ Creates a list of zeros"""

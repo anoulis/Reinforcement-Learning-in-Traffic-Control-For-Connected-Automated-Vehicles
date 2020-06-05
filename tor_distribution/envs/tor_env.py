@@ -2,6 +2,7 @@ import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
 
+
 import os
 import sys
 if 'SUMO_HOME' in os.environ:
@@ -28,7 +29,7 @@ from datetime import datetime
 class TorEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, cfg_file, net_file, route_file, vTypes_files, out_csv_name=None, sim_steps=10, use_gui=True, num_seconds=20000, max_depart_delay=100000, time_to_load_vehicles=0, delta_time=5, data_path = ""):
+    def __init__(self, cfg_file, net_file, route_file, vTypes_files, delay=100, out_csv_name=None, sim_steps=200, trains=2, plot= False, use_gui=True,  data_path = ""):
         """
         initialization of the environment
 
@@ -65,14 +66,19 @@ class TorEnv(gym.Env):
         # self.sim_max_steps=48335
         self.sim_max_steps=sim_steps
         self.sim_max_time=self.sim_max_steps/10.0
+        self.trains = trains
+        self.plot= plot
+        self.delay = delay
         self.use_gui = use_gui
         self.x = []
         self.y = []
         self.forcedT = 0
         self.tt = []
         self.ms = []
+        self.start= None
         self._sumo_binary = sumolib.checkBinary('sumo')
         self.data_path = data_path
+        self.sim_example = False
 
         seperator = ', '
         vTypesToString = seperator.join(self._vTypes)
@@ -103,10 +109,12 @@ class TorEnv(gym.Env):
         """
         reset the enviromnent
         """
+        self.start = time.time()
         if self.run != 0:
             self.myManager = TraciManager()
             traci.close()
             self.save_csv(self.data_path, self.run)
+
 
 
         self.run += 1
@@ -125,14 +133,24 @@ class TorEnv(gym.Env):
         seperator = ', '
         vTypesToString = seperator.join(self._vTypes)
         addFilesString = "scenario/additionalsOutput_trafficMix_0_trafficDemand_1_driverBehaviour_OS_seed_0.xml, "+ vTypesToString + ", scenario/shapes.add.xml, scenario/view.add.xml"
+        if(self.sim_example):
+            trip_path = self.data_path + "/tripinfo.xml"
+            sumo_args = ["-c", self._cfg,
+                         "--random",
+                         # "--tripinfo-output.write-unfinished", "True",
+                         "--tripinfo-output",  trip_path,
+                         "-r", self._route,
+                         "-a", addFilesString]
+        else:
+            sumo_args = ["-c", self._cfg,
+                         "--random",
+                         "-r", self._route,
+                         "-a", addFilesString]
 
-        sumo_args = ["-c", self._cfg,
-                     "--random",
-                     "-r", self._route,
-                     "-a", addFilesString]
+
 
         traci.start([self._sumo_binary] + sumo_args)
-        for i in range(100):
+        for i in range(self.dealy):
             self._sumo_step()
         return self._compute_observations()
 
@@ -182,15 +200,26 @@ class TorEnv(gym.Env):
         observation = self._compute_observations()
         # print("OBS " + str(observation[4]))
         reward = self._compute_rewards(action,observation)
-        done =  self.myManager.sim_step() > self.sim_max_time
+        done =  self.myManager.sim_step() >= self.sim_max_time
         if(done):
+            print()
+            elapsed_time = time.time()- self.start
+            print("Duration of the phase =", time.strftime("%H:%M:%S", time.gmtime(elapsed_time)))
+            if(self.sim_example==False):
+                print("Train Episode " + str(self.run) +  " of " + str(self.trains) + " finished after " + str(self.sim_max_steps) + " timesteps")
+            else:
+                print("Simulation example finished after " + str(self.sim_max_steps) + " timesteps")
+            print("Number of ToC per cell")
             print(self.myManager.ToC_Per_Cell)
-            print(sum(self.myManager.ToC_Per_Cell))
-            print(self.myManager.forcedToCs)
-            print(self.myManager.cav_dist/sum(self.myManager.ToC_Per_Cell))
 
-            if(self.plot):
-                self.myplot(self.x,self.ms,"Timestamp", "TravelTime")
+            print("Total number of ToC messages: " + str(sum(self.myManager.ToC_Per_Cell)))
+            print("Number of forced ToC messages: " + str(self.myManager.forcedToCs))
+            print("Average covered distance of CAV_CV vehs: " + str(self.myManager.cav_dist/sum(self.myManager.ToC_Per_Cell)))
+            print("Average Mean Speed in simulation for both of the lanes: " + str(sum(self.ms)/len(self.ms)))
+            print("Average Travel Time in simulation for both of the lanes: " + str(sum(self.tt)/len(self.tt)))
+            print()
+            # if(self.plot):
+            #     self.myplot(self.x,self.tt,"Timestamp", "TravelTime")
 
         info = self._compute_step_info(action,observation)
         self.metrics.append(info)
@@ -261,14 +290,16 @@ class TorEnv(gym.Env):
             tt  += self.myManager.getLaneTravelTime(lanes[i])
             ms  += self.myManager.getLaneMeanSpeed(lanes[i])
         pun = 0
-        pun = self.myManager.get_forced_ToCs()
+        pun = 1.2*self.myManager.get_forced_ToCs()
+        # pun = self.myManager.get_forced_ToCs()
+
         self.forcedT = pun
         wt_pun=0
         if(wt!=0):
             wt_pun=10*wt
 
         if(action != 0):
-            if(observation[1][action-1]<3 and pun ==0 and  wt_pun==0):
+            if(observation[1][action-1]<4 and pun ==0 and  wt_pun==0):
                 reward = 10 + self.myManager.getCellInfluence(action)
             else:
                 reward = -(observation[1][action-1] + pun+wt_pun) + self.myManager.getCellInfluence(action)
@@ -414,6 +445,7 @@ class TorEnv(gym.Env):
     def close(self):
         """
         close the simulation
+
         """
         traci.close()
 
@@ -423,6 +455,7 @@ class TorEnv(gym.Env):
         load gui for the simulation
         """
         self._sumo_binary = sumolib.checkBinary('sumo-gui')
+        self.sim_example = True
         self.plot = True
 
 
