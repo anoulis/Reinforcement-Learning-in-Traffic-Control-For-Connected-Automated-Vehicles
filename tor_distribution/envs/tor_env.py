@@ -29,7 +29,7 @@ from datetime import datetime
 class TorEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, cfg_file, net_file, route_file, vTypes_files, delay=100, out_csv_name=None, sim_steps=200, trains=2, plot= False, use_gui=True,  data_path = ""):
+    def __init__(self, cfg_file, net_file, route_file, vTypes_files, delay=100, out_csv_name=None, sim_steps=200, trains=2, plot= False, use_gui=True, sim_example=False,   forced_toc_pun=1.0, data_path = ""):
         """
         initialization of the environment
 
@@ -73,12 +73,13 @@ class TorEnv(gym.Env):
         self.x = []
         self.y = []
         self.forcedT = 0
+        self.forcedTocPun = forced_toc_pun
         self.tt = []
         self.ms = []
         self.start= None
         self._sumo_binary = sumolib.checkBinary('sumo')
         self.data_path = data_path
-        self.sim_example = False
+        self.sim_example = sim_example
 
         seperator = ', '
         vTypesToString = seperator.join(self._vTypes)
@@ -113,7 +114,7 @@ class TorEnv(gym.Env):
         if self.run != 0:
             self.myManager = TraciManager()
             traci.close()
-            self.save_csv(self.data_path, self.run)
+            # self.save_csv(self.data_path, self.run)
 
 
 
@@ -134,7 +135,7 @@ class TorEnv(gym.Env):
         vTypesToString = seperator.join(self._vTypes)
         addFilesString = "scenario/additionalsOutput_trafficMix_0_trafficDemand_1_driverBehaviour_OS_seed_0.xml, "+ vTypesToString + ", scenario/shapes.add.xml, scenario/view.add.xml"
         if(self.sim_example):
-            trip_path = self.data_path + "/tripinfo.xml"
+            trip_path = self.data_path + "/tripinfo_" + str(self.run) + ".xml"
             sumo_args = ["-c", self._cfg,
                          "--random",
                          # "--tripinfo-output.write-unfinished", "True",
@@ -218,6 +219,8 @@ class TorEnv(gym.Env):
             print("Average Mean Speed in simulation for both of the lanes: " + str(sum(self.ms)/len(self.ms)))
             print("Average Travel Time in simulation for both of the lanes: " + str(sum(self.tt)/len(self.tt)))
             print()
+            self.save_csv(self.data_path, self.run)
+
             # if(self.plot):
             #     self.myplot(self.x,self.tt,"Timestamp", "TravelTime")
 
@@ -290,7 +293,8 @@ class TorEnv(gym.Env):
             tt  += self.myManager.getLaneTravelTime(lanes[i])
             ms  += self.myManager.getLaneMeanSpeed(lanes[i])
         pun = 0
-        pun = 1.2*self.myManager.get_forced_ToCs()
+        pun = self.forcedTocPun*self.myManager.get_forced_ToCs()
+        # pun = 1.2*self.myManager.get_forced_ToCs()
         # pun = self.myManager.get_forced_ToCs()
 
         self.forcedT = pun
