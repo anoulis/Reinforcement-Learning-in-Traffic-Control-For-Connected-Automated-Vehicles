@@ -68,7 +68,7 @@ def main():
     parser.add_argument("-gui", action="store_true", default=True, help="Run with visualization on SUMO.\n"),
     parser.add_argument("-plot", action="store_true", default=True, help="Plot graphs.\n"),
     parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=48335, help="Max simulation steps.\n"),
-    parser.add_argument("-trains", dest="trains", type =int, default=10, help="Max trainings.\n"),
+    parser.add_argument("-trains", dest="trains", type =int, default=30, help="Max trainings.\n"),
 
 
     # parser.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
