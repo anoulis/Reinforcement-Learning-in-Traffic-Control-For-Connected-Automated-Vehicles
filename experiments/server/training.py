@@ -67,7 +67,7 @@ def main():
                         help="Route definition xml file.\n")
     parser.add_argument("-gui", action="store_true", default=True, help="Run with visualization on SUMO.\n"),
     parser.add_argument("-plot", action="store_true", default=True, help="Plot graphs.\n"),
-    parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=48335, help="Max simulation steps.\n"),
+    parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=48335 , help="Max simulation steps.\n"),
     parser.add_argument("-trains", dest="trains", type =int, default=30, help="Max trainings.\n"),
     parser.add_argument("-pun", dest="pun", type =float, default=1.0, help="Forced ToC messages punishment factor.\n"),
     parser.add_argument("-zip", dest="zip", type=str,

@@ -13,9 +13,10 @@ import matplotlib.pyplot as pl
 def main():
     main_path = []
     outputs_path = 'outputs/simulations/'
-    main_path.append('outputs/simulations/dqn_3trains_pun1.3.zip_20200609-193214/')
-    main_path.append('outputs/simulations/dqn_3trains_pun1.3.zip_20200611-095309/')
-    iteration_number = 3
+    # declare model's stored files
+    # main_path.append('outputs/simulations/dqn_3trains_pun1.3.zip_20200609-193214/')
+    # main_path.append('outputs/simulations/dqn_3trains_pun1.3.zip_20200611-095309/')
+    iteration_number = 10
 
     # we go for every model
 
