@@ -261,23 +261,8 @@ class TorEnv(gym.Env):
         # reward = self.reward_based_on_Travel_Time(action, observation)
         reward = self.reward_based_on_Distribution(action, observation)
 
-
         return reward
 
-
-    def reward_based_on_ToCs(self, action, observation):
-        """ Calculated reward based on the number of ToCs that we sent """
-        reward = 0
-
-        # punishment for the sum of forced ToCs
-        reward = -(10*self.myManager.get_forced_ToCs())
-
-        if(action != 0):
-            reward += self.myManager.getDecidedToCs()*self.myManager.getCellInfluence(action)
-        else:
-            reward += 0
-
-        return reward
 
     def reward_based_on_Distribution(self, action, observation):
         """ Calculated reward based on the number of ToCs that we sent """
@@ -297,7 +282,7 @@ class TorEnv(gym.Env):
         # pun = 1.2*self.myManager.get_forced_ToCs()
         # pun = self.myManager.get_forced_ToCs()
 
-        self.forcedT = pun
+        self.forcedT = self.myManager.get_forced_ToCs()
         wt_pun=0
         if(wt!=0):
             wt_pun=10*wt
@@ -311,112 +296,6 @@ class TorEnv(gym.Env):
             reward = 0 - pun - wt_pun
 
         return reward
-
-    def reward_based_on_Mean_Speed(self, action, observation):
-        """ Calculated reward based on the mean speed of the lanes """
-        reward = 0
-
-        # punishment for the sum of forced ToCs
-        reward = -(50*self.myManager.get_forced_ToCs())
-
-        lanes = self.myManager.getAreaLanes()
-        ms = 0
-        for i in range(2):
-            ms  += self.myManager.getLaneMeanSpeed(lanes[i])
-
-        if(action != 0):
-            reward += self.myManager.getCellInfluence(action)*ms
-        else:
-            reward += 0.1 * ms
-
-        return reward
-
-    def reward_based_on_Density(self, action, observation):
-        """ Calculated reward based on the densityPerCell """
-        reward = 0
-        densities = []
-        densities = observation[4]
-
-        # punishment for the sum of forced ToCs
-        # reward = -(10*self.myManager.get_forced_ToCs())
-        # if(action != 11):
-        #     reward += -densities[action-1] + densities[action-1]*self.myManager.getCellInfluence(action)
-        # else:
-        #     reward += 0
-
-        # different approach
-        pun = self.myManager.get_forced_ToCs()
-        if(pun!=0):
-            reward  = -(pun)
-        else:
-            if(action != 0):
-                reward = (1-densities[action-1])
-            else:
-                reward = sum(densities)/10
-
-        return reward
-
-    def r(self, action, observation):
-        """ Calculated reward based on the ratio between
-        the avg covered distance per cav/cv and TravelTime of the lanes """
-        msC = observation[3]
-
-        pun = self.myManager.get_forced_ToCs()
-        if(sum(self.myManager.ToC_Per_Cell)!=0):
-            cav_avg = self.myManager.cav_dist/sum(self.myManager.ToC_Per_Cell)
-        else:
-            cav_avg = 0
-        tt=0
-        ms = 0
-        lanes = self.myManager.getAreaLanes()
-        for i in range(2):
-            tt  += self.myManager.getLaneTravelTime(lanes[i])
-            ms  += self.myManager.getLaneMeanSpeed(lanes[i])
-
-        df = 1 - ((tt/150) + (60/ms))
-        # dfs = 1 - (60/ms)
-
-        if(pun!=0):
-            reward  = -(pun)
-
-        else:
-            reward = cav_avg * df
-
-        return reward
-
-    def reward_based_on_Travel_Time(self, action, observation):
-        """ Calculated reward based on the TravelTime of the lanes """
-        reward = 0
-        tt = 0
-        final_reward = 0
-        lanes = self.myManager.getAreaLanes()
-        for i in range(2):
-            tt  += self.myManager.getLaneTravelTime(lanes[i])
-
-        pun = self.myManager.get_forced_ToCs()
-        self.forcedT = pun
-
-        # if(pun !=0):
-        #     reward  = tt*pun
-        # elif(tt >300):
-        #     reward =1000
-        # else:
-        #     if(action != 11):
-        #         reward = (1-self.myManager.getCellInfluence(action))*tt
-        #     else:
-        #         reward = tt/2
-
-            # if(action != 11):
-            #     reward = (1-self.myManager.getCellInfluence(action))*tt
-            # else:
-            #     reward = 0.9 * tt
-        if(sum(observation[0])==0):
-            tt=0
-        final_reward = self.last_measurement - tt
-        self.last_measurement = tt
-        return final_reward
-        # return -reward
-
 
 
     def _sumo_step(self):
@@ -482,3 +361,128 @@ class TorEnv(gym.Env):
         # plt.ylabel('y - axis - Travel Time')
         # plt.title('Line graph!')
         # plt.show()
+
+
+    # Previous reward functions   
+
+    # def reward_based_on_ToCs(self, action, observation):
+    #     """ Calculated reward based on the number of ToCs that we sent """
+    #     reward = 0
+
+    #     # punishment for the sum of forced ToCs
+    #     reward = -(10*self.myManager.get_forced_ToCs())
+
+    #     if(action != 0):
+    #         reward += self.myManager.getDecidedToCs()*self.myManager.getCellInfluence(action)
+    #     else:
+    #         reward += 0
+
+    #     return reward
+
+
+    # def reward_based_on_Mean_Speed(self, action, observation):
+    #     """ Calculated reward based on the mean speed of the lanes """
+    #     reward = 0
+
+    #     # punishment for the sum of forced ToCs
+    #     reward = -(50*self.myManager.get_forced_ToCs())
+
+    #     lanes = self.myManager.getAreaLanes()
+    #     ms = 0
+    #     for i in range(2):
+    #         ms  += self.myManager.getLaneMeanSpeed(lanes[i])
+
+    #     if(action != 0):
+    #         reward += self.myManager.getCellInfluence(action)*ms
+    #     else:
+    #         reward += 0.1 * ms
+
+    #     return reward
+
+    # def reward_based_on_Density(self, action, observation):
+    #     """ Calculated reward based on the densityPerCell """
+    #     reward = 0
+    #     densities = []
+    #     densities = observation[4]
+
+    #     # punishment for the sum of forced ToCs
+    #     # reward = -(10*self.myManager.get_forced_ToCs())
+    #     # if(action != 11):
+    #     #     reward += -densities[action-1] + densities[action-1]*self.myManager.getCellInfluence(action)
+    #     # else:
+    #     #     reward += 0
+
+    #     # different approach
+    #     pun = self.myManager.get_forced_ToCs()
+    #     if(pun!=0):
+    #         reward  = -(pun)
+    #     else:
+    #         if(action != 0):
+    #             reward = (1-densities[action-1])
+    #         else:
+    #             reward = sum(densities)/10
+
+    #     return reward
+
+    # def r(self, action, observation):
+    #     """ Calculated reward based on the ratio between
+    #     the avg covered distance per cav/cv and TravelTime of the lanes """
+    #     msC = observation[3]
+
+    #     pun = self.myManager.get_forced_ToCs()
+    #     if(sum(self.myManager.ToC_Per_Cell)!=0):
+    #         cav_avg = self.myManager.cav_dist/sum(self.myManager.ToC_Per_Cell)
+    #     else:
+    #         cav_avg = 0
+    #     tt=0
+    #     ms = 0
+    #     lanes = self.myManager.getAreaLanes()
+    #     for i in range(2):
+    #         tt  += self.myManager.getLaneTravelTime(lanes[i])
+    #         ms  += self.myManager.getLaneMeanSpeed(lanes[i])
+
+    #     df = 1 - ((tt/150) + (60/ms))
+    #     # dfs = 1 - (60/ms)
+
+    #     if(pun!=0):
+    #         reward  = -(pun)
+
+    #     else:
+    #         reward = cav_avg * df
+
+    #     return reward
+
+    # def reward_based_on_Travel_Time(self, action, observation):
+    #     """ Calculated reward based on the TravelTime of the lanes """
+    #     reward = 0
+    #     tt = 0
+    #     final_reward = 0
+    #     lanes = self.myManager.getAreaLanes()
+    #     for i in range(2):
+    #         tt  += self.myManager.getLaneTravelTime(lanes[i])
+
+    #     pun = self.myManager.get_forced_ToCs()
+    #     self.forcedT = pun
+
+    #     # if(pun !=0):
+    #     #     reward  = tt*pun
+    #     # elif(tt >300):
+    #     #     reward =1000
+    #     # else:
+    #     #     if(action != 11):
+    #     #         reward = (1-self.myManager.getCellInfluence(action))*tt
+    #     #     else:
+    #     #         reward = tt/2
+
+    #         # if(action != 11):
+    #         #     reward = (1-self.myManager.getCellInfluence(action))*tt
+    #         # else:
+    #         #     reward = 0.9 * tt
+    #     if(sum(observation[0])==0):
+    #         tt=0
+    #     final_reward = self.last_measurement - tt
+    #     self.last_measurement = tt
+    #     return final_reward
+    #     # return -reward
+
+
