@@ -1,12 +1,8 @@
 import xml.etree.ElementTree as ElementTree
-import seaborn as sns
-import matplotlib.pyplot as plt
 import csv
 import pandas as pd
-import seaborn as sns
 import matplotlib
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as pl
 
 
@@ -28,6 +24,7 @@ def main():
         duration_list = []
         wt_list = []
         tl_list = []
+        dd_list = []
 
         for i in range(iteration_number):
             
@@ -58,22 +55,25 @@ def main():
             tree = ElementTree.parse(filepath)
             root = tree.getroot()
             d=0
+            dd = 0
             wt=0
             tl=0
             counts=0
             for child in root:
-                counts =+1
+                counts +=1
                 d+=float(child.attrib['duration'])
                 wt+=float(child.attrib['waitingTime'])
                 tl+=float(child.attrib['timeLoss'])
-            
+                dd+= float(child.attrib['departDelay'])
+
             duration_list.append(d/counts)
             wt_list.append(wt/counts)
             tl_list.append(tl/counts)
+            dd_list.append(dd/counts)
 
             data.append({'id': int(k+1), 'simulation': int(i+1),  'avg_cav_dist': avg_cav_dist,
                          'meanSpeed':  meanSpeed[-1], 'travelTime': TravelTime[-1], 
-                         'duration': duration_list[-1], 'timeLoss': tl_list[-1], 'waitingTime': wt_list[-1]})
+                         'duration': duration_list[-1], 'timeLoss': tl_list[-1], 'departDelay': dd_list[-1], 'waitingTime': wt_list[-1]})
 
     df = pd.DataFrame(data)
     df.to_csv('outputs/simulations/comparisons/full_data.csv', index=False)
@@ -90,6 +90,8 @@ def myBoxPlots(path):
     pl.savefig('outputs/simulations/comparisons/travelTime.png')
     bp_d = df.boxplot(column='duration', by='id')
     pl.savefig('outputs/simulations/comparisons/duration.png')
+    bp_dd = df.boxplot(column='departDelay', by='id')
+    pl.savefig('outputs/simulations/comparisons/departDelay.png')
     bp_tl = df.boxplot(column='timeLoss', by='id')    
     pl.savefig('outputs/simulations/comparisons/timeLoss.png')
     bp_wt = df.boxplot(column='waitingTime', by='id')
