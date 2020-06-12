@@ -69,7 +69,10 @@ def main():
     parser.add_argument("-plot", action="store_true", default=True, help="Plot graphs.\n"),
     parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=48335, help="Max simulation steps.\n"),
     parser.add_argument("-trains", dest="trains", type =int, default=30, help="Max trainings.\n"),
-    parser.add_argument("-simulations", dest="simulations", type =int, default=10, help="Number of simulation examples.\n"),
+    parser.add_argument("-seed", dest="seed", type=int,
+                        default=1024, help="Seed number.\n"),
+    parser.add_argument("-simulations", dest="simulations", type=int,
+                        default=10, help="Number of simulation examples.\n"),
     parser.add_argument("-pun", dest="pun", type =float, default=1.0, help="Forced ToC messages punishment factor.\n"),
     parser.add_argument("-zip", dest="zip", type=str,
                         default='dqn_sample.zip',
@@ -105,6 +108,7 @@ def main():
                     delay=100,
                     forced_toc_pun=args.pun,
                     sim_example = True,
+                    seed = args.seed,
                     data_path = path)
 
     # save args to file

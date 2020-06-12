@@ -29,7 +29,7 @@ from datetime import datetime
 class TorEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, cfg_file, net_file, route_file, vTypes_files, delay=100, out_csv_name=None, sim_steps=200, trains=2, plot= False, use_gui=True, sim_example=False,   forced_toc_pun=1.0, data_path = ""):
+    def __init__(self, cfg_file, net_file, route_file, vTypes_files, delay=100, out_csv_name=None, sim_steps=200, seed = 1024, trains=2, plot= False, use_gui=True, sim_example=False,   forced_toc_pun=1.0, data_path = ""):
         """
         initialization of the environment
 
@@ -103,6 +103,7 @@ class TorEnv(gym.Env):
         self.keepAutonomy = {}
         self.plot = False
         self.delay = 0
+        self.seed = seed
         traci.close()
 
 
@@ -136,8 +137,10 @@ class TorEnv(gym.Env):
         addFilesString = "scenario/additionalsOutput_trafficMix_0_trafficDemand_1_driverBehaviour_OS_seed_0.xml, "+ vTypesToString + ", scenario/shapes.add.xml, scenario/view.add.xml"
         if(self.sim_example):
             trip_path = self.data_path + "/tripinfo_" + str(self.run) + ".xml"
+            print(self.seed+self.run)
             sumo_args = ["-c", self._cfg,
-                         "--random",
+                        #  "--random",
+                        "--seed", str(self.seed+self.run),
                          # "--tripinfo-output.write-unfinished", "True",
                          "--tripinfo-output",  trip_path,
                          "-r", self._route,
