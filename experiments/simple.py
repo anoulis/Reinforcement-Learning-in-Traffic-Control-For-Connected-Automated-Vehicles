@@ -67,8 +67,8 @@ def main():
                         help="Route definition xml file.\n")
     parser.add_argument("-gui", action="store_true", default=True, help="Run with visualization on SUMO.\n"),
     parser.add_argument("-plot", action="store_true", default=True, help="Plot graphs.\n"),
-    parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=48335, help="Max simulation steps.\n"),
-    parser.add_argument("-trains", dest="trains", type =int, default=30, help="Max trainings.\n"),
+    parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=10000, help="Max simulation steps.\n"),
+    parser.add_argument("-trains", dest="trains", type =int, default=10, help="Max trainings.\n"),
 
 
     # parser.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
@@ -116,20 +116,20 @@ def main():
     )
 
     # execute the training
-    print()
-    print("Start the training for", args.trains, "episodes and simulation steps " +str(args.sim_steps) + "\n")
-    model.learn(total_timesteps=(args.trains*args.sim_steps))
-    print()
-    elapsed_time = time.time()- start
-    print("Duration of the whole training phase =", time.strftime("%H:%M:%S", time.gmtime(elapsed_time)))
+    # print()
+    # print("Start the training for", args.trains, "episodes and simulation steps " +str(args.sim_steps) + "\n")
+    # model.learn(total_timesteps=(args.trains*args.sim_steps))
+    # print()
+    # elapsed_time = time.time()- start
+    # print("Duration of the whole training phase =", time.strftime("%H:%M:%S", time.gmtime(elapsed_time)))
 
 
-    # save, delete and restore model
-    print("Save and delete the model \n")
-    model.save("dnq_sample")
-    del model
+    # # save, delete and restore model
+    # print("Save and delete the model \n")
+    # model.save("dnq_sample")
+    # del model
     print("Load the model and start the visualization \n")
-    model = DQN.load("dnq_sample",env)
+    model = DQN.load("test_dqn",env)
     # save, delete and restore model
     # model.save("dnq_sample2")
     # del model
