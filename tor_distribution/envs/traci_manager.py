@@ -62,7 +62,7 @@ class Vehicle:
 # The old runner code
 class TraciManager():
 
-    def __init__(self):
+    def __init__(self,cells_number):
         self.MAX_OCCUPANCY = 10.
 
         self.downwardEdgeID = "e0"
@@ -106,10 +106,10 @@ class TraciManager():
         self.densityPerCell = []
         self.step = 0
         self.sendToCs = 0
-        self.ToC_Per_Cell = self.zerolistmaker(10)
+        self.cells_number = cells_number
+        self.ToC_Per_Cell = self.zerolistmaker(self.cells_number)
         self.cav_dist = 0
         self.forcedToCs = 0
-
 
     def requestToC(self, vehID, vehCell, vehPos, timeUntilMRM):
         self.ToC_Per_Cell[vehCell-1]+=1
@@ -130,29 +130,61 @@ class TraciManager():
         """
         return the cell that a veh belongs, base the position
         """
-
-        if lane == "e0_0":
-            if pos<300:
-                return 2
-            elif pos>300 and pos<800:
-                return 4
-            elif pos>800 and pos<1300:
-                return 6
-            elif pos>1300 and pos<1800:
-                return 8
+        if(self.cells_number==10):
+            if lane == "e0_0":
+                if pos<300:
+                    return 2
+                elif pos>300 and pos<800:
+                    return 4
+                elif pos>800 and pos<1300:
+                    return 6
+                elif pos>1300 and pos<1800:
+                    return 8
+                else:
+                    return 10
             else:
-                return 10
+                if pos<300:
+                    return 1
+                elif pos>300 and pos<800:
+                    return 3
+                elif pos>800 and pos<1300:
+                    return 5
+                elif pos>1300 and pos<1800:
+                    return 7
+                else:
+                    return 9
         else:
-            if pos<300:
-                return 1
-            elif pos>300 and pos<800:
-                return 3
-            elif pos>800 and pos<1300:
-                return 5
-            elif pos>1300 and pos<1800:
-                return 7
+            if lane == "e0_0":
+                if pos < 350:
+                    return 2
+                elif pos > 350 and pos < 700:
+                    return 4
+                elif pos > 700 and pos < 1050:
+                    return 6
+                elif pos > 1050 and pos < 1400:
+                    return 8
+                elif pos > 1400 and pos < 1750:
+                    return 10
+                elif pos > 1750 and pos < 2100:
+                    return 12
+                else:
+                    return 14
             else:
-                return 9
+                if pos < 350:
+                    return 1
+                elif pos > 350 and pos < 700:
+                    return 3
+                elif pos > 700 and pos < 1050:
+                    return 5
+                elif pos > 1050 and pos < 1400:
+                    return 7
+                elif pos > 1400 and pos < 1750:
+                    return 9
+                elif pos > 1750 and pos < 2100:
+                    return 11
+                else:
+                    return 13
+
 
 
     def countVehsPerCells(self,vehList):
@@ -160,7 +192,7 @@ class TraciManager():
         Returns a list with the number of specific veh.
         CAV_CV, pendingToCVehs, LVsInToCZone
         """
-        storeList = self.zerolistmaker(10)
+        storeList = self.zerolistmaker(self.cells_number)
         for veh in vehList:
             storeList[veh.cell-1] += 1
         return storeList
@@ -181,9 +213,9 @@ class TraciManager():
         """
         Store the Average speed per cell
         """
-        sum = self.zerolistmaker(10)
-        count = self.zerolistmaker(10)
-        self.speedPerCell = self.zerolistmaker(10)
+        sum = self.zerolistmaker(self.cells_number)
+        count = self.zerolistmaker(self.cells_number)
+        self.speedPerCell = self.zerolistmaker(self.cells_number)
         for veh in self.CAV_CV:
             sum[veh.cell-1] += veh.speed
             count[veh.cell-1] += 1
@@ -193,7 +225,7 @@ class TraciManager():
         for veh in self.LVsInToCZone:
             sum[veh.cell-1] += veh.speed
             count[veh.cell-1] += 1
-        for i in range(10):
+        for i in range(self.cells_number):
             if(count[i]==0):
                 self.speedPerCell[i] = 0
             else:
@@ -204,15 +236,14 @@ class TraciManager():
         Store the density of vehs per cell
         """
         sum = 0
-        self.densityPerCell = self.zerolistmaker(10)
-        for i in range(10):
+        self.densityPerCell = self.zerolistmaker(self.cells_number)
+        for i in range(self.cells_number):
             sum = self.vehsAVPerCell[i] + self.vehsPendPerCell[i] + self.vehsLVPerCell[i]
             if(i==1 or 1==2):
                 # print(sum/300)
                 self.densityPerCell[i]= sum/300.
             else:
                 # print(sum/500)
-
                 self.densityPerCell[i]= sum/500.
 
     def getDensityPerCells(self):
@@ -245,16 +276,32 @@ class TraciManager():
 
     def getCellInfluence(self,cell):
         """ Returns the influence of each cell on the reward"""
-        if cell==2 or cell==1:
-            return 0.1
-        elif cell==4 or cell==3:
-            return 0.2
-        elif cell==6 or cell==5:
-            return 0.3
-        elif cell==8 or cell==7:
-            return 0.4
+        if(self.cells_number == 10):
+            if cell==2 or cell==1:
+                return 0.1
+            elif cell==4 or cell==3:
+                return 0.2
+            elif cell==6 or cell==5:
+                return 0.3
+            elif cell==8 or cell==7:
+                return 0.4
+            else:
+                return 0.5
         else:
-            return 0.5
+            if cell == 2 or cell == 1:
+                return 0.1
+            elif cell == 4 or cell == 3:
+                return 0.2
+            elif cell == 6 or cell == 5:
+                return 0.2
+            elif cell == 8 or cell == 7:
+                return 0.3
+            elif cell == 10 or cell == 9:
+                return 0.3
+            elif cell == 12 or cell == 11:
+                return 0.4
+            else:
+                return 0.5
 
     def zerolistmaker(self,n):
         """ Creates a list of zeros"""
@@ -287,9 +334,13 @@ class TraciManager():
         We store that message, so as to get penalized in rewards calculations.
         """
         punishment = 0
+        if(self.cells_number==10):
+            limit =2000
+        else:
+            limit = 2200
         for veh in self.CAV_CV:
             if(veh not in self.pendingToCVehs):
-                if(traci.vehicle.getDistance(veh.ID)>2000):
+                if(traci.vehicle.getDistance(veh.ID)>limit):
                     self.requestToC(veh.ID, veh.cell, veh.pos, ToC_lead_times[veh.automationType])
                     self.pendingToCVehs.append(veh)
                     self.CAV_CV.remove(veh)
