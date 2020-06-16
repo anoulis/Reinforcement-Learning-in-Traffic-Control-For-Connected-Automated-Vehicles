@@ -80,6 +80,7 @@ class TorEnv(gym.Env):
         self._sumo_binary = sumolib.checkBinary('sumo')
         self.data_path = data_path
         self.sim_example = sim_example
+        self.cells_number = 10
 
         seperator = ', '
         vTypesToString = seperator.join(self._vTypes)
@@ -89,12 +90,13 @@ class TorEnv(gym.Env):
 
         traci.start([sumolib.checkBinary('sumo')] + sumo_args)
 
-        self.observation_space = spaces.Box(-np.inf, np.inf, shape=(5,10), dtype=np.float32)
-        self.action_space = spaces.Discrete(11)
+        self.observation_space = spaces.Box(-np.inf, np.inf,
+                                            shape=(5, self.cells_number), dtype=np.float32)
+        self.action_space = spaces.Discrete(self.cells_number+1)
 
         self.reward_range = (-float('inf'), float('inf'))
         self.run = 0
-        self.myManager = TraciManager()
+        self.myManager = TraciManager(self.cells_number)
         self.density = {}
         self.occupancy = {}
         self.meanSpeed = {}
@@ -113,7 +115,7 @@ class TorEnv(gym.Env):
         """
         self.start = time.time()
         if self.run != 0:
-            self.myManager = TraciManager()
+            self.myManager = TraciManager(self.cells_number)
             traci.close()
             # self.save_csv(self.data_path, self.run)
 
@@ -172,25 +174,25 @@ class TorEnv(gym.Env):
 
         av =  self.myManager.getAVperCells()
         if not av:
-            av = self.myManager.zerolistmaker(10)
+            av = self.myManager.zerolistmaker(self.cells_number)
 
         pend =  self.myManager.getPendperCells()
         if not pend:
-            pend = self.myManager.zerolistmaker(10)
+            pend = self.myManager.zerolistmaker(self.cells_number)
 
         lv =  self.myManager.getLVperCells()
         if not lv:
-            lv = self.myManager.zerolistmaker(10)
+            lv = self.myManager.zerolistmaker(self.cells_number)
 
         speeds = self.myManager.getSpeedPerCells()
         if not speeds:
-            speeds = self.myManager.zerolistmaker(10)
+            speeds = self.myManager.zerolistmaker(self.cells_number)
 
         density = self.myManager.getDensityPerCells()
         if not density:
-            density = self.myManager.zerolistmaker(10)
+            density = self.myManager.zerolistmaker(self.cells_number)
 
-        return np.array([av[:10], pend[:10], lv[:10], speeds[:10], density[:10]], dtype=np.float32)
+        return np.array([av[:self.cells_number], pend[:self.cells_number], lv[:self.cells_number], speeds[:self.cells_number], density[:self.cells_number]], dtype=np.float32)
 
 
     def step(self, action):
@@ -262,7 +264,9 @@ class TorEnv(gym.Env):
         # reward = self.reward_based_on_Density(action, observation)
         # reward = self.r(action, observation)
         # reward = self.reward_based_on_Travel_Time(action, observation)
-        reward = self.reward_based_on_Distribution(action, observation)
+        # reward = self.reward_based_on_Distribution(action, observation)
+        reward = self.reward_based_on_Distribution_Speed(action, observation)
+
 
         return reward
 
@@ -282,9 +286,6 @@ class TorEnv(gym.Env):
             ms  += self.myManager.getLaneMeanSpeed(lanes[i])
         pun = 0
         pun = self.forcedTocPun*self.myManager.get_forced_ToCs()
-        # pun = 1.2*self.myManager.get_forced_ToCs()
-        # pun = self.myManager.get_forced_ToCs()
-
         self.forcedT = self.myManager.get_forced_ToCs()
         wt_pun=0
         if(wt!=0):
@@ -297,6 +298,53 @@ class TorEnv(gym.Env):
                 reward = -(observation[1][action-1] + pun+wt_pun) + self.myManager.getCellInfluence(action)
         else:
             reward = 0 - pun - wt_pun
+
+        return reward
+
+    def reward_based_on_Distribution_Speed(self, action, observation):
+        """ Calculated reward based on the number of ToCs that we sent """
+        reward = 0
+
+        # punishment for the sum of forced ToCs
+        tt = 0
+        ms = 0
+        lanes = self.myManager.getAreaLanes()
+        wt = 0
+
+        for i in range(2):
+            wt += self.myManager.getLaneWait(lanes[i])
+            tt += self.myManager.getLaneTravelTime(lanes[i])
+            ms += self.myManager.getLaneMeanSpeed(lanes[i])
+        pun = 0
+        pun = self.forcedTocPun*self.myManager.get_forced_ToCs()
+        self.forcedT = self.myManager.get_forced_ToCs()
+        wt_pun = 0
+        speed_pun = 0
+
+        for i in range(self.cells_number):
+            if(i>=2):
+                if(observation[3][i] <= 20 and (observation[0][i]+observation[1][i]+observation[2][i]) >0):
+                    speed_pun+=10
+
+        if(wt != 0):
+            print("WT ",wt)
+            print("speeds ", observation[3])
+            wt_pun = 10*wt
+        if(self.cells_number ==10):
+            limit = 4
+        else:
+            limit = 3
+
+        if(action != 0):
+            if(observation[1][action-1] < limit and pun == 0 and wt_pun == 0 and speed_pun ==0):
+                reward = 10 + \
+                    self.myManager.getCellInfluence(
+                        action) 
+            else:
+                reward = -(observation[1][action-1] + pun +wt_pun + speed_pun) + \
+                    self.myManager.getCellInfluence(action)
+        else:
+            reward = 0 - pun - wt_pun - speed_pun
 
         return reward
 
