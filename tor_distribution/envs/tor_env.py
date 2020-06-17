@@ -80,7 +80,7 @@ class TorEnv(gym.Env):
         self._sumo_binary = sumolib.checkBinary('sumo')
         self.data_path = data_path
         self.sim_example = sim_example
-        self.cells_number = 10
+        self.cells_number = 14
 
         seperator = ', '
         vTypesToString = seperator.join(self._vTypes)
@@ -92,7 +92,7 @@ class TorEnv(gym.Env):
 
         self.observation_space = spaces.Box(-np.inf, np.inf,
                                             shape=(5, self.cells_number), dtype=np.float32)
-        self.action_space = spaces.Discrete(self.cells_number+1)
+        self.action_space = spaces.Discrete(self.cells_number+1-2)
 
         self.reward_range = (-float('inf'), float('inf'))
         self.run = 0
@@ -321,10 +321,13 @@ class TorEnv(gym.Env):
         wt_pun = 0
         speed_pun = 0
 
-        for i in range(self.cells_number):
-            if(i>=2):
-                if(observation[3][i] <= 20 and (observation[0][i]+observation[1][i]+observation[2][i]) >0):
-                    speed_pun+=10
+
+        # for i in range(self.cells_number):
+        #     if(i>=2):
+        #         if(observation[3][i] <= 20 and (observation[0][i]+observation[1][i]+observation[2][i]) >0):
+        #             speed_pun+=10
+        if(observation[3][(action-1)+2] <= 25 and (observation[0][(action-1)+2]+observation[1][(action-1)+2]+observation[2][(action-1)+2]) > 0):
+            speed_pun = observation[3][(action-1)+2]
 
         if(wt != 0):
             print("WT ",wt)
