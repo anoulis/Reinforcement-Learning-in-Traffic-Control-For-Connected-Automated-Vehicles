@@ -316,7 +316,7 @@ class TorEnv(gym.Env):
             tt += self.myManager.getLaneTravelTime(lanes[i])
             ms += self.myManager.getLaneMeanSpeed(lanes[i])
         pun = 0
-        pun = self.forcedTocPun*self.myManager.get_forced_ToCs()
+        # pun = self.forcedTocPun*self.myManager.get_forced_ToCs()
         self.forcedT = self.myManager.get_forced_ToCs()
         wt_pun = 0
         speed_pun = 0
@@ -330,8 +330,8 @@ class TorEnv(gym.Env):
             speed_pun = observation[3][(action-1)+2]
 
         if(wt != 0):
-            print("WT ",wt)
-            print("speeds ", observation[3])
+            # print("WT ",wt)
+            # print("speeds ", observation[3])
             wt_pun = 10*wt
         if(self.cells_number ==10):
             limit = 4
@@ -340,12 +340,9 @@ class TorEnv(gym.Env):
 
         if(action != 0):
             if(observation[1][action-1] < limit and pun == 0 and wt_pun == 0 and speed_pun ==0):
-                reward = 10 + \
-                    self.myManager.getCellInfluence(
-                        action) 
+                reward = 10 #+ self.myManager.getCellInfluence(action) 
             else:
-                reward = -(observation[1][action-1] + pun +wt_pun + speed_pun) + \
-                    self.myManager.getCellInfluence(action)
+                reward = -(observation[1][action-1] + pun +wt_pun + speed_pun) #+ self.myManager.getCellInfluence(action)
         else:
             reward = 0 - pun - wt_pun - speed_pun
 
