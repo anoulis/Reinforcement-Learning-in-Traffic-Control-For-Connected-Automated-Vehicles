@@ -99,6 +99,9 @@ def main():
         f.write(arg + ' ' + str(getattr(args, arg)) + '\n')
     f.close()   
 
+
+
+
     env = gym.make('tor_distribution:tor-v0',
                     cfg_file=args.cfg,
                     net_file=args.network,
@@ -111,6 +114,7 @@ def main():
                     delay=100,
                     forced_toc_pun=args.pun,
                     data_path = path)
+
 
     # It will check your custom environment and output additional warnings if needed
     # check_env(env)
@@ -125,10 +129,14 @@ def main():
         buffer_size=50000,
         exploration_fraction=0.1,
         exploration_final_eps=0.02,
-        verbose = 1,
+        verbose = 2,
         tensorboard_log="./dqn_tensorboard/"
     )
-    
+    # model = A2C(MlpPolicy, env,
+    #             gamma=0.99,
+    #             learning_rate=1e-3, 
+    #             verbose=2,
+    #             tensorboard_log="./a2c_tensorboard/")
 
     #execute the training
     print()

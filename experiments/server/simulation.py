@@ -22,7 +22,6 @@ from stable_baselines.deepq.policies import DQNPolicy
 from stable_baselines.common.policies import CnnLnLstmPolicy
 from stable_baselines.common.buffers import ReplayBuffer, PrioritizedReplayBuffer
 from stable_baselines.common.policies import MlpPolicy
-from stable_baselines.common import make_vec_env
 from stable_baselines import A2C
 
 import argparse
@@ -119,6 +118,7 @@ def main():
 
     print("Load the model " + str(args.zip) + " and start the visualization \n")
     model = DQN.load(args.zip,env)
+    # model = A2C.load(args.zip)
 
     for run in range(args.simulations):
         observation = env.reset()
