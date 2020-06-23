@@ -170,17 +170,17 @@ class TraciManager():
                 else:
                     return 14
             else:
-                if pos < 350:
+                if pos < 300:
                     return 1
-                elif pos > 350 and pos < 700:
+                elif pos > 300 and pos < 650:
                     return 3
-                elif pos > 700 and pos < 1050:
+                elif pos > 650 and pos < 1000:
                     return 5
-                elif pos > 1050 and pos < 1400:
+                elif pos > 1000 and pos < 1350:
                     return 7
-                elif pos > 1400 and pos < 1750:
+                elif pos > 1350 and pos < 1700:
                     return 9
-                elif pos > 1750 and pos < 2100:
+                elif pos > 1700 and pos < 2000:
                     return 11
                 else:
                     return 13
@@ -334,10 +334,7 @@ class TraciManager():
         We store that message, so as to get penalized in rewards calculations.
         """
         punishment = 0
-        if(self.cells_number==10):
-            limit =2000
-        else:
-            limit = 2200
+        limit =2000
         for veh in self.CAV_CV:
             if(veh not in self.pendingToCVehs):
                 if(traci.vehicle.getDistance(veh.ID)>limit):
