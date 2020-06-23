@@ -27,6 +27,7 @@ def main():
         avg_cav_dist = None
         duration_list = []
         wt_list = []
+        wc_list = []
         tl_list = []
         dd_list = []
 
@@ -61,23 +62,26 @@ def main():
             d=0
             dd = 0
             wt=0
+            wc=0
             tl=0
             counts=0
             for child in root:
                 counts +=1
                 d+=float(child.attrib['duration'])
                 wt+=float(child.attrib['waitingTime'])
+                wc += int(child.attrib['waitingCount'])
                 tl+=float(child.attrib['timeLoss'])
                 dd+= float(child.attrib['departDelay'])
 
             duration_list.append(d/counts)
-            wt_list.append(wt/counts)
+            wt_list.append(wt)
             tl_list.append(tl/counts)
             dd_list.append(dd/counts)
+            wc_list.append(wc)
 
             data.append({'id': int(k+1), 'simulation': int(i+1),  'avg_cav_dist': avg_cav_dist,
                          'meanSpeed':  meanSpeed[-1], 'travelTime': TravelTime[-1], 
-                         'duration': duration_list[-1], 'timeLoss': tl_list[-1], 'departDelay': dd_list[-1], 'waitingTime': wt_list[-1]})
+                         'duration': duration_list[-1], 'timeLoss': tl_list[-1], 'departDelay': dd_list[-1], 'waitingTime': wt_list[-1], 'waitingCount': wc_list[-1]})
 
     df = pd.DataFrame(data)
     df.to_csv('outputs/simulations/comparisons/full_data.csv', index=False)
@@ -100,6 +104,8 @@ def myBoxPlots(path):
     pl.savefig('outputs/simulations/comparisons/timeLoss.png')
     bp_wt = df.boxplot(column='waitingTime', by='id')
     pl.savefig('outputs/simulations/comparisons/waitingTime.png')
+    bp_wc = df.boxplot(column='waitingCount', by='id')
+    pl.savefig('outputs/simulations/comparisons/waitingCount.png')
     bp_cd = df.boxplot(column='avg_cav_dist', by='id')
     pl.savefig('outputs/simulations/comparisons/avg_cav_dist.png')
     # pl.show()
