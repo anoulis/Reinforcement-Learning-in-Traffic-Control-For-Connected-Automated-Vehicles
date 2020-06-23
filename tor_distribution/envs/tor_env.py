@@ -29,7 +29,7 @@ from datetime import datetime
 class TorEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, cfg_file, net_file, route_file, vTypes_files, delay=100, out_csv_name=None, sim_steps=200, seed = 1024, trains=2, plot= False, use_gui=True, sim_example=False,   forced_toc_pun=1.0, data_path = ""):
+    def __init__(self, cfg_file=str("scenario/sumo.cfg"), net_file="scenario/UC5_1.net.xml", route_file='scenario/routes_trafficMix_0_trafficDemand_1_driverBehaviour_OS_seed_0.xml', vTypes_files=['scenario/vTypesCAVToC_OS.add.xml','scenario/vTypesCVToC_OS.add.xml','scenario/vTypesLV_OS.add.xml'], delay=100, out_csv_name=None, sim_steps=200, seed=1024, trains=2, plot=False, use_gui=True, sim_example=False,   forced_toc_pun=1.0, data_path="/home/anoulis/workspace/tor-distribution/outputs/trainings/"):
         """
         initialization of the environment
 
@@ -149,15 +149,16 @@ class TorEnv(gym.Env):
                          "-a", addFilesString]
         else:
             sumo_args = ["-c", self._cfg,
-                         "--random",
+                         "--seed", str(2000),
+                        #  "--random",
                          "-r", self._route,
                          "-a", addFilesString]
 
 
 
         traci.start([self._sumo_binary] + sumo_args)
-        for i in range(self.dealy):
-            self._sumo_step()
+        # for i in range(self.dealy):
+        #     self._sumo_step()
         return self._compute_observations()
 
 
@@ -206,6 +207,8 @@ class TorEnv(gym.Env):
         observation = self._compute_observations()
         # print("OBS " + str(observation[4]))
         reward = self._compute_rewards(action,observation)
+
+
         done =  self.myManager.sim_step() >= self.sim_max_time
         if(done):
             print()
@@ -229,7 +232,7 @@ class TorEnv(gym.Env):
             # if(self.plot):
             #     self.myplot(self.x,self.tt,"Timestamp", "TravelTime")
 
-        info = self._compute_step_info(action,observation)
+        info = self._compute_step_info(action, observation)
         self.metrics.append(info)
         self.last_reward = reward
 
@@ -265,7 +268,9 @@ class TorEnv(gym.Env):
         # reward = self.r(action, observation)
         # reward = self.reward_based_on_Travel_Time(action, observation)
         # reward = self.reward_based_on_Distribution(action, observation)
-        reward = self.reward_based_on_Distribution_Speed(action, observation)
+        # reward = self.reward_based_on_Distribution_Speed(action, observation)
+        reward = self.reward_based_on_DS(action, observation)
+
 
 
         return reward
@@ -301,6 +306,56 @@ class TorEnv(gym.Env):
 
         return reward
 
+    def reward_based_on_DS(self, action, observation):
+        reward = 0
+        tt = 0
+        ms = 0
+        pun=0
+        lanes = self.myManager.getAreaLanes()
+        wt = 0
+        if(wt != 0):
+            print("WT ", wt)
+            print("speeds ", observation[3])
+        speed_pun = 0
+
+        for i in range(self.cells_number):
+            if(i >= 1):
+                if(observation[3][i] <= 20 and (observation[0][i]+observation[1][i]+observation[2][i]) > 0):
+                    speed_pun += 10
+
+
+        for i in range(2):
+            wt += self.myManager.getLaneWait(lanes[i])
+            tt += self.myManager.getLaneTravelTime(lanes[i])
+            ms += self.myManager.getLaneMeanSpeed(lanes[i])
+        
+        pun = self.myManager.get_forced_ToCs()
+        # pun = observation[0][self.cells_number-1] + \
+        #     observation[0][self.cells_number-2]
+
+        if(pun== 0):
+            if(wt==0):
+                if(speed_pun==0):
+                    if(action != 0):
+                        if(observation[1][action-1] >0 and observation[1][action-1] < 3 ):
+                            reward = 10 + self.myManager.getCellInfluence(action)
+                        else:
+                        # + self.myManager.getCellInfluence(action)
+                            reward = -observation[1][action-1] 
+                    else:
+                        reward = 1
+                else:
+                    reward = -speed_pun
+            else:
+                reward = -wt*1000
+        else:
+            # print(observation[0])
+            reward = -pun*10000
+
+        return reward
+
+        
+
     def reward_based_on_Distribution_Speed(self, action, observation):
         """ Calculated reward based on the number of ToCs that we sent """
         reward = 0
@@ -322,17 +377,17 @@ class TorEnv(gym.Env):
         speed_pun = 0
 
 
-        # for i in range(self.cells_number):
-        #     if(i>=2):
-        #         if(observation[3][i] <= 20 and (observation[0][i]+observation[1][i]+observation[2][i]) >0):
-        #             speed_pun+=10
-        if(observation[3][(action-1)+2] <= 25 and (observation[0][(action-1)+2]+observation[1][(action-1)+2]+observation[2][(action-1)+2]) > 0):
-            speed_pun = observation[3][(action-1)+2]
+        for i in range(self.cells_number):
+            if(i>=2):
+                if(observation[3][i] <= 20 and (observation[0][i]+observation[1][i]+observation[2][i]) >0):
+                    speed_pun+=10
+        # if(observation[3][(action-1)+2] <= 25 and (observation[0][(action-1)+2]+observation[1][(action-1)+2]+observation[2][(action-1)+2]) > 0):
+        #     speed_pun = observation[3][(action-1)+2]
 
         if(wt != 0):
-            # print("WT ",wt)
-            # print("speeds ", observation[3])
-            wt_pun = 10*wt
+            print("WT ",wt)
+            print("speeds ", observation[3])
+            wt_pun = 100*wt
         if(self.cells_number ==10):
             limit = 4
         else:
@@ -509,8 +564,10 @@ class TorEnv(gym.Env):
     #     tt = 0
     #     final_reward = 0
     #     lanes = self.myManager.getAreaLanes()
+    #     wt = 0
     #     for i in range(2):
-    #         tt  += self.myManager.getLaneTravelTime(lanes[i])
+    #         wt += self.myManager.getLaneWait(lanes[i])
+    #         tt += self.myManager.getLaneTravelTime(lanes[i])
 
     #     pun = self.myManager.get_forced_ToCs()
     #     self.forcedT = pun
@@ -520,19 +577,24 @@ class TorEnv(gym.Env):
     #     # elif(tt >300):
     #     #     reward =1000
     #     # else:
-    #     #     if(action != 11):
+    #     # if(wt==0):
+    #     #     if(action != 0):
     #     #         reward = (1-self.myManager.getCellInfluence(action))*tt
     #     #     else:
     #     #         reward = tt/2
+    #     # else:
+    #     #     print("WT ", wt)
+    #     #     print("speeds ", observation[3])
+    #     #     reward = -wt*100
 
     #         # if(action != 11):
     #         #     reward = (1-self.myManager.getCellInfluence(action))*tt
     #         # else:
     #         #     reward = 0.9 * tt
-    #     if(sum(observation[0])==0):
-    #         tt=0
-    #     final_reward = self.last_measurement - tt
-    #     self.last_measurement = tt
+    #     # if(sum(observation[0])==0):
+    #     #     tt=0
+    #     final_reward = self.last_measurement - wt
+    #     self.last_measurement = wt
     #     return final_reward
     #     # return -reward
 
