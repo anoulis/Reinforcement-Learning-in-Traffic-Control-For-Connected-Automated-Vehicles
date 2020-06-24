@@ -130,7 +130,7 @@ def main():
         exploration_fraction=0.1,
         exploration_final_eps=0.02,
         verbose = 2,
-        tensorboard_log="./dqn_tensorboard/"
+        tensorboard_log="./../../../../media/ml_share/noul_ar/dqn_tensorboard/"
     )
     # model = A2C(MlpPolicy, env,
     #             gamma=0.99,
