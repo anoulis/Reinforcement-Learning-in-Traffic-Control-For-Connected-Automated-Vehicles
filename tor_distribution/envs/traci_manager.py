@@ -286,22 +286,22 @@ class TraciManager():
             elif cell==8 or cell==7:
                 return 0.4
             else:
-                return 0.5
+                return 0
         else:
             if cell == 2 or cell == 1:
                 return 0.1
             elif cell == 4 or cell == 3:
                 return 0.2
             elif cell == 6 or cell == 5:
-                return 0.2
+                return 0.3
             elif cell == 8 or cell == 7:
-                return 0.3
-            elif cell == 10 or cell == 9:
-                return 0.3
-            elif cell == 12 or cell == 11:
                 return 0.4
-            else:
+            elif cell == 10 or cell == 9:
                 return 0.5
+            elif cell == 12 or cell == 11:
+                return 0.6
+            else:
+                return 0
 
     def zerolistmaker(self,n):
         """ Creates a list of zeros"""
@@ -338,9 +338,9 @@ class TraciManager():
         for veh in self.CAV_CV:
             if(veh not in self.pendingToCVehs):
                 if(traci.vehicle.getDistance(veh.ID)>limit):
-                    self.requestToC(veh.ID, veh.cell, veh.pos, ToC_lead_times[veh.automationType])
-                    self.pendingToCVehs.append(veh)
-                    self.CAV_CV.remove(veh)
+                    # self.requestToC(veh.ID, veh.cell, veh.pos, ToC_lead_times[veh.automationType])
+                    # self.pendingToCVehs.append(veh)
+                    # self.CAV_CV.remove(veh)
                     punishment+=1
         self.latePunishment = punishment
         self.forcedToCs += self.latePunishment

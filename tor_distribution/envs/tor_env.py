@@ -210,19 +210,26 @@ class TorEnv(gym.Env):
 
 
         done =  self.myManager.sim_step() >= self.sim_max_time
+        if(not done and reward==-10000):
+            done = True
         if(done):
             print()
             elapsed_time = time.time()- self.start
             print("Duration of the phase =", time.strftime("%H:%M:%S", time.gmtime(elapsed_time)))
             if(self.sim_example==False):
-                print("Train Episode " + str(self.run) +  " of " + str(self.trains) + " finished after " + str(self.sim_max_steps) + " timesteps")
+                print("Train Episode " + str(self.run) + " of " + str(self.trains) +
+                      " finished after " + str(self.myManager.sim_step()*10) + " timesteps")
             else:
-                print("Simulation example finished after " + str(self.sim_max_steps) + " timesteps")
+                print("Simulation example finished after " +
+                      str(self.myManager.sim_step()*10) + " timesteps")
             print("Number of ToC per cell")
             print(self.myManager.ToC_Per_Cell)
 
             print("Total number of ToC messages: " + str(sum(self.myManager.ToC_Per_Cell)))
-            print("Number of forced ToC messages: " + str(self.myManager.forcedToCs))
+            print("CAVS at the last timestep: ")
+            print( str(observation[0]))
+
+            # print("Number of forced ToC messages: " + str(self.myManager.forcedToCs))
             print("Average covered distance of CAV_CV vehs: " + str(self.myManager.cav_dist/sum(self.myManager.ToC_Per_Cell)))
             print("Average Mean Speed in simulation for both of the lanes: " + str(sum(self.ms)/len(self.ms)))
             print("Average Travel Time in simulation for both of the lanes: " + str(sum(self.tt)/len(self.tt)))
@@ -271,137 +278,135 @@ class TorEnv(gym.Env):
         # reward = self.reward_based_on_Distribution_Speed(action, observation)
         reward = self.reward_based_on_DS(action, observation)
 
-
-
         return reward
-
-
-    def reward_based_on_Distribution(self, action, observation):
-        """ Calculated reward based on the number of ToCs that we sent """
-        reward = 0
-
-        # punishment for the sum of forced ToCs
-        tt=0
-        ms = 0
-        lanes = self.myManager.getAreaLanes()
-        wt = 0
-        for i in range(2):
-            wt += self.myManager.getLaneWait(lanes[i])
-            tt  += self.myManager.getLaneTravelTime(lanes[i])
-            ms  += self.myManager.getLaneMeanSpeed(lanes[i])
-        pun = 0
-        pun = self.forcedTocPun*self.myManager.get_forced_ToCs()
-        self.forcedT = self.myManager.get_forced_ToCs()
-        wt_pun=0
-        if(wt!=0):
-            wt_pun=10*wt
-
-        if(action != 0):
-            if(observation[1][action-1]<4 and pun ==0 and  wt_pun==0):
-                reward = 10 + self.myManager.getCellInfluence(action)
-            else:
-                reward = -(observation[1][action-1] + pun+wt_pun) + self.myManager.getCellInfluence(action)
-        else:
-            reward = 0 - pun - wt_pun
-
-        return reward
+    
 
     def reward_based_on_DS(self, action, observation):
         reward = 0
         tt = 0
         ms = 0
-        pun=0
+        pun = 0
         lanes = self.myManager.getAreaLanes()
         wt = 0
-        if(wt != 0):
-            print("WT ", wt)
-            print("speeds ", observation[3])
-        speed_pun = 0
+        # if(wt != 0):
+        #     print("WT ", wt)
+        #     print("speeds ", observation[3])
+        # speed_pun = 0
 
-        for i in range(self.cells_number):
-            if(i >= 1):
-                if(observation[3][i] <= 20 and (observation[0][i]+observation[1][i]+observation[2][i]) > 0):
-                    speed_pun += 10
-
+        # for i in range(self.cells_number):
+        #     if(i >= 1):
+        #         if(observation[3][i] <= 20 and (observation[0][i]+observation[1][i]+observation[2][i]) > 0):
+        #             speed_pun += 10
 
         for i in range(2):
             wt += self.myManager.getLaneWait(lanes[i])
             tt += self.myManager.getLaneTravelTime(lanes[i])
             ms += self.myManager.getLaneMeanSpeed(lanes[i])
-        
-        pun = self.myManager.get_forced_ToCs()
-        # pun = observation[0][self.cells_number-1] + \
-        #     observation[0][self.cells_number-2]
 
-        if(pun== 0):
-            if(wt==0):
-                if(speed_pun==0):
-                    if(action != 0):
-                        if(observation[1][action-1] >0 and observation[1][action-1] < 3 ):
-                            reward = 10 + self.myManager.getCellInfluence(action)
-                        else:
-                        # + self.myManager.getCellInfluence(action)
-                            reward = -observation[1][action-1] 
-                    else:
-                        reward = 1
+        # pun = self.myManager.get_forced_ToCs()
+        pun = observation[0][self.cells_number-1] + \
+            observation[0][self.cells_number-2]
+
+        if(pun == 0):
+            if(wt == 0):
+                # if(speed_pun==0):
+                if(action != 0):
+                    reward = 1 + self.myManager.getCellInfluence(action)
+                    # if(observation[1][action-1] >0 and observation[1][action-1] < 3 ):
+                    #     reward = 1 + self.myManager.getCellInfluence(action)
+                    # else:
+                    # # + self.myManager.getCellInfluence(action)
+                    #     reward = -observation[1][action-1]
                 else:
-                    reward = -speed_pun
+                    reward = 1
+                # else:
+                #     reward = -speed_pun
             else:
-                reward = -wt*1000
+                reward = -10000  # wt*1000
         else:
             # print(observation[0])
-            reward = -pun*10000
+            reward = -10000
 
         return reward
+
+
+    # def reward_based_on_Distribution(self, action, observation):
+    #     """ Calculated reward based on the number of ToCs that we sent """
+    #     reward = 0
+
+    #     # punishment for the sum of forced ToCs
+    #     tt=0
+    #     ms = 0
+    #     lanes = self.myManager.getAreaLanes()
+    #     wt = 0
+    #     for i in range(2):
+    #         wt += self.myManager.getLaneWait(lanes[i])
+    #         tt  += self.myManager.getLaneTravelTime(lanes[i])
+    #         ms  += self.myManager.getLaneMeanSpeed(lanes[i])
+    #     pun = 0
+    #     pun = self.forcedTocPun*self.myManager.get_forced_ToCs()
+    #     self.forcedT = self.myManager.get_forced_ToCs()
+    #     wt_pun=0
+    #     if(wt!=0):
+    #         wt_pun=10*wt
+
+    #     if(action != 0):
+    #         if(observation[1][action-1]<4 and pun ==0 and  wt_pun==0):
+    #             reward = 10 + self.myManager.getCellInfluence(action)
+    #         else:
+    #             reward = -(observation[1][action-1] + pun+wt_pun) + self.myManager.getCellInfluence(action)
+    #     else:
+    #         reward = 0 - pun - wt_pun
+
+    #     return reward
 
         
+    # def reward_based_on_Distribution_Speed(self, action, observation):
+    #     """ Calculated reward based on the number of ToCs that we sent """
+    #     reward = 0
 
-    def reward_based_on_Distribution_Speed(self, action, observation):
-        """ Calculated reward based on the number of ToCs that we sent """
-        reward = 0
+    #     # punishment for the sum of forced ToCs
+    #     tt = 0
+    #     ms = 0
+    #     lanes = self.myManager.getAreaLanes()
+    #     wt = 0
 
-        # punishment for the sum of forced ToCs
-        tt = 0
-        ms = 0
-        lanes = self.myManager.getAreaLanes()
-        wt = 0
-
-        for i in range(2):
-            wt += self.myManager.getLaneWait(lanes[i])
-            tt += self.myManager.getLaneTravelTime(lanes[i])
-            ms += self.myManager.getLaneMeanSpeed(lanes[i])
-        pun = 0
-        # pun = self.forcedTocPun*self.myManager.get_forced_ToCs()
-        self.forcedT = self.myManager.get_forced_ToCs()
-        wt_pun = 0
-        speed_pun = 0
+    #     for i in range(2):
+    #         wt += self.myManager.getLaneWait(lanes[i])
+    #         tt += self.myManager.getLaneTravelTime(lanes[i])
+    #         ms += self.myManager.getLaneMeanSpeed(lanes[i])
+    #     pun = 0
+    #     # pun = self.forcedTocPun*self.myManager.get_forced_ToCs()
+    #     self.forcedT = self.myManager.get_forced_ToCs()
+    #     wt_pun = 0
+    #     speed_pun = 0
 
 
-        for i in range(self.cells_number):
-            if(i>=2):
-                if(observation[3][i] <= 20 and (observation[0][i]+observation[1][i]+observation[2][i]) >0):
-                    speed_pun+=10
-        # if(observation[3][(action-1)+2] <= 25 and (observation[0][(action-1)+2]+observation[1][(action-1)+2]+observation[2][(action-1)+2]) > 0):
-        #     speed_pun = observation[3][(action-1)+2]
+    #     for i in range(self.cells_number):
+    #         if(i>=2):
+    #             if(observation[3][i] <= 20 and (observation[0][i]+observation[1][i]+observation[2][i]) >0):
+    #                 speed_pun+=10
+    #     # if(observation[3][(action-1)+2] <= 25 and (observation[0][(action-1)+2]+observation[1][(action-1)+2]+observation[2][(action-1)+2]) > 0):
+    #     #     speed_pun = observation[3][(action-1)+2]
 
-        if(wt != 0):
-            print("WT ",wt)
-            print("speeds ", observation[3])
-            wt_pun = 100*wt
-        if(self.cells_number ==10):
-            limit = 4
-        else:
-            limit = 3
+    #     if(wt != 0):
+    #         print("WT ",wt)
+    #         print("speeds ", observation[3])
+    #         wt_pun = 100*wt
+    #     if(self.cells_number ==10):
+    #         limit = 4
+    #     else:
+    #         limit = 3
 
-        if(action != 0):
-            if(observation[1][action-1] < limit and pun == 0 and wt_pun == 0 and speed_pun ==0):
-                reward = 10 #+ self.myManager.getCellInfluence(action) 
-            else:
-                reward = -(observation[1][action-1] + pun +wt_pun + speed_pun) #+ self.myManager.getCellInfluence(action)
-        else:
-            reward = 0 - pun - wt_pun - speed_pun
+    #     if(action != 0):
+    #         if(observation[1][action-1] < limit and pun == 0 and wt_pun == 0 and speed_pun ==0):
+    #             reward = 10 #+ self.myManager.getCellInfluence(action) 
+    #         else:
+    #             reward = -(observation[1][action-1] + pun +wt_pun + speed_pun) #+ self.myManager.getCellInfluence(action)
+    #     else:
+    #         reward = 0 - pun - wt_pun - speed_pun
 
-        return reward
+    #     return reward
 
 
     def _sumo_step(self):
