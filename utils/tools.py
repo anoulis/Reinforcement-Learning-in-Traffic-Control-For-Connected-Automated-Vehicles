@@ -13,6 +13,22 @@ def main():
 
     # declare model's stored files
     main_path.append('outputs/simulations/runner/')
+        # main_path.append('outputs/simulations/dnq_sample3012.zip_20200613-123442/')
+    main_path.append('outputs/simulations/dnq_sample3015.zip_20200613-143151/')
+    # main_path.append('outputs/simulations/dnq_sample4015.zip_20200622-072426/')
+    # main_path.append('outputs/simulations/dnq_sample5015.zip_20200615-073715/')
+    # main_path.append('outputs/simulations/dnq_sample302.zip_20200613-165701/')
+    # main_path.append('outputs/simulations/dnq_sample502.zip_20200614-110230/')
+    # main_path.append('outputs/simulations/dnq_sample301515.zip_20200615-211718/')
+    # main_path.append('outputs/simulations/dnq_sample3015_new.zip_20200617-072153/')
+    # main_path.append('outputs/simulations/runner/')
+
+    # main_path.append('outputs/simulations/dnq_sample30_14_25_no_cell.zip_20200618-102941/')
+    # main_path.append('outputs/simulations/dnq_sample35_14_25_no_cell.zip_20200619-072518/')
+    # # main_path.append('outputs/simulations/dnq_sample20_14_25_no_cell.zip_20200620-105722/')
+    # main_path.append('outputs/simulations/dnq_sample10_14_25_no_cell_100.zip_20200620-220627/')
+    # main_path.append('outputs/simulations/dnq_sample20_14_25_no_cell_100.zip_20200621-102117/')
+    main_path.append('outputs/simulations/dnq_dc_seed_30.zip_20200624-101517/')
     # main_path.append('outputs/simulations/./')
 
 
@@ -85,28 +101,70 @@ def main():
 
     df = pd.DataFrame(data)
     df.to_csv('outputs/simulations/comparisons/full_data.csv', index=False)
-    myBoxPlots('outputs/simulations/comparisons/full_data.csv')
+    myBoxPlots('outputs/simulations/comparisons/full_data.csv',iteration_number)
 
 
-def myBoxPlots(path):
+def myBoxPlots(path,iteration_number):
     data_path=path
-    gapminder = pd.read_csv(data_path)
+    dataframe = pd.read_csv(data_path, index_col=0)
+    ids = int(len(dataframe['waitingTime'])/iteration_number)
+    flag=0
+    wt_sum = []
+    wc_sum = []
+    id = []
+    for i in range(ids):
+        id.append(i+1)
+        wt_sum.append(sum(dataframe['waitingTime'][flag:flag+iteration_number]))
+        wc_sum.append(sum(dataframe['waitingCount'][flag:flag+iteration_number]))
+        flag+=iteration_number
+
+    # fig, ax = pl.subplots()
+    y_pos = np.arange(len(id))
+    pl.bar(y_pos, wt_sum,width = 0.2)
+    pl.title('Waiting Time Plot')
+    pl.xlabel('Models')
+    pl.ylabel('Overall WT in secs')
+    # Limits for the Y axis
+    # pl.ylim(0.0,10.0)
+    pl.xticks(y_pos, id)
+    pl.savefig('outputs/simulations/comparisons/waitingTime.png')
+
+    pl.bar(y_pos, wc_sum,width = 0.2)
+    pl.title('Waiting Count Plot')
+    pl.xlabel('Models')
+    pl.ylabel('Overall number of WC')
+    # Limits for the Y axis
+    # pl.ylim(0.0,10.0)
+    pl.xticks(y_pos, id)
+    pl.savefig('outputs/simulations/comparisons/waitingCount.png')
+
     df = pd.read_csv(data_path, sep=',', na_values='.')
     bp_ms = df.boxplot(column='meanSpeed', by='id')
+    bp_ms.set_title('Mean Speed of both lanes in m/s')
+    # pl.title('Mean Speed Plot')
+    # pl.xlabel('Models')
+    # pl.ylabel('MeanSpeed in m/s')
     pl.savefig('outputs/simulations/comparisons/meanSpeed.png')
     bp_tt = df.boxplot(column='travelTime', by='id')
+    bp_tt.set_title('Travel Time of both lanes in s')
     pl.savefig('outputs/simulations/comparisons/travelTime.png')
     bp_d = df.boxplot(column='duration', by='id')
+    bp_d.set_title('Average Duration in simulation s ')
     pl.savefig('outputs/simulations/comparisons/duration.png')
     bp_dd = df.boxplot(column='departDelay', by='id')
+    bp_dd.set_title('Average Departure Delay in simulation s')
     pl.savefig('outputs/simulations/comparisons/departDelay.png')
     bp_tl = df.boxplot(column='timeLoss', by='id')    
+    bp_tl.set_title('Average Time Loss in s')
     pl.savefig('outputs/simulations/comparisons/timeLoss.png')
-    bp_wt = df.boxplot(column='waitingTime', by='id')
-    pl.savefig('outputs/simulations/comparisons/waitingTime.png')
-    bp_wc = df.boxplot(column='waitingCount', by='id')
-    pl.savefig('outputs/simulations/comparisons/waitingCount.png')
+    # bp_wt = df.boxplot(column='waitingTime', by='id')
+    # df.waitingTime.plot(color='g',lw=1.3)
+    # df.id.plot(color='r',lw=1.3)
+    # pl.savefig('outputs/simulations/comparisons/waitingTime.png')
+    # bp_wc = df.boxplot(column='waitingCount', by='id')
+    # pl.savefig('outputs/simulations/comparisons/waitingCount.png')
     bp_cd = df.boxplot(column='avg_cav_dist', by='id')
+    bp_cd.set_title('Average covered distance of CAVs in m')
     pl.savefig('outputs/simulations/comparisons/avg_cav_dist.png')
     # pl.show()
 
