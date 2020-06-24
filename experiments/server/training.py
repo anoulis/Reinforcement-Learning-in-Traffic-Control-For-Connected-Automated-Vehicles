@@ -24,6 +24,10 @@ from stable_baselines.common.buffers import ReplayBuffer, PrioritizedReplayBuffe
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.common import make_vec_env
 from stable_baselines import A2C
+from stable_baselines.common.callbacks import EvalCallback, StopTrainingOnRewardThreshold
+from stable_baselines.common.evaluation import evaluate_policy
+from stable_baselines.common.vec_env import DummyVecEnv
+
 
 import argparse
 import sys
@@ -116,6 +120,9 @@ def main():
                     data_path = path)
 
 
+    # check_env(env)
+    # env = DummyVecEnv(env1)
+    # env = DummyVecEnv([lambda: env1])
     # It will check your custom environment and output additional warnings if needed
     # check_env(env)
 
@@ -140,12 +147,24 @@ def main():
 
     #execute the training
     print()
-    print("Start the training for", args.trains, "episodes and simulation steps " +str(args.sim_steps) + "\n")
-    model.learn(total_timesteps=(args.trains*args.sim_steps))
+
+    # Stop training when the model reaches the reward threshold
+    mythreshold = 2500
+    callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=mythreshold, verbose=1)
+    eval_callback = EvalCallback(env, callback_on_new_best=callback_on_best, verbose=1)
+    # print("Start the training for", args.trains, "episodes and simulation steps " +str(args.sim_steps) + "\n")
+    print("Start the training for threshold ", mythreshold,
+          "episodes and simulation steps " + str(args.sim_steps) + "\n")
+
+    # model.learn(total_timesteps=(args.trains*args.sim_steps))
+    model.learn(int(1e10), callback = eval_callback)
 
     # save, delete and restore model
     print("Save the model " +str(args.zip)+ " \n")
     model.save(args.zip)
+    # mean_reward, std_reward = evaluate_policy(model, model.get_env(), n_eval_episodes=10)
+
+    
 
     env.close()
     print()
