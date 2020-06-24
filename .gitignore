@@ -130,3 +130,5 @@ a2c_sample.zip
 #extra saving directories
 outputs/
 dqn_tensorboard/
+a2c_tensorboard/
+ppo2_tensorboard/
