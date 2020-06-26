@@ -24,7 +24,8 @@ from stable_baselines.common.buffers import ReplayBuffer, PrioritizedReplayBuffe
 from stable_baselines.common.policies import MlpPolicy
 from stable_baselines.common import make_vec_env
 from stable_baselines import A2C
-from stable_baselines.common.callbacks import EvalCallback, StopTrainingOnRewardThreshold
+from stable_baselines.common.callbacks import EvalCallback, StopTrainingOnRewardThreshold,CallbackList, CheckpointCallback
+
 from stable_baselines.common.evaluation import evaluate_policy
 from stable_baselines.common.vec_env import DummyVecEnv
 
@@ -119,7 +120,22 @@ def main():
                     forced_toc_pun=args.pun,
                     data_path = path)
 
+    eval_env = gym.make('tor_distribution:tor-v0',
+                   cfg_file=args.cfg,
+                   net_file=args.network,
+                   route_file=args.route,
+                   vTypes_files=args.vTypes,
+                   use_gui=args.gui,
+                   sim_steps=args.sim_steps,
+                   trains=args.trains,
+                   plot=args.plot,
+                   delay=100,
+                   forced_toc_pun=args.pun,
+                   data_path=path)
 
+
+
+    # print(env._max_episode_steps)
     # check_env(env)
     # env = DummyVecEnv(env1)
     # env = DummyVecEnv([lambda: env1])
@@ -130,17 +146,24 @@ def main():
     model = DQN(
         env=env,
         policy=LnMlpPolicy,
-        gamma=0.99,
+        # gamma=0.99,
         prioritized_replay=True,
-        learning_rate=1e-3,
-        buffer_size=50000,
-        exploration_fraction=0.1,
-        exploration_final_eps=0.02,
+        # learning_rate=1e-3,
+        # buffer_size=50000,
+        # batch_size=64,
+        # exploration_fraction=0.1,
+        # exploration_final_eps=0.02,
+        # exploration_final_eps = 0.99,
+        # exploration_initial_eps = 0.05,
+        # learning_starts=10000,
+        # target_network_update_freq=500,
+        # param_noise=True,
         verbose = 2,
-        tensorboard_log="./../../../../media/ml_share/noul_ar/dqn_tensorboard/"
+        tensorboard_log="./dqn_tensorboard/"
     )
     # model = A2C(MlpPolicy, env,
     #             gamma=0.99,
+    #             n_steps=10,
     #             learning_rate=1e-3, 
     #             verbose=2,
     #             tensorboard_log="./a2c_tensorboard/")
@@ -148,16 +171,26 @@ def main():
     #execute the training
     print()
 
+    # Use deterministic actions for evaluation
+    # eval_callback = EvalCallback(env, best_model_save_path='./logs/',
+    #                              log_path='./logs/', eval_freq=5*args.sim_steps,
+    #                             deterministic=True, render=False)
+
+    checkpoint_callback = CheckpointCallback(save_freq=args.sim_steps, save_path='./logs/',
+                                             name_prefix='rl_model')
+
     # Stop training when the model reaches the reward threshold
-    mythreshold = 2500
-    callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=mythreshold, verbose=1)
-    eval_callback = EvalCallback(env, callback_on_new_best=callback_on_best, verbose=1)
-    # print("Start the training for", args.trains, "episodes and simulation steps " +str(args.sim_steps) + "\n")
-    print("Start the training for threshold ", mythreshold,
-          "episodes and simulation steps " + str(args.sim_steps) + "\n")
+    # mythreshold = 3500
+    # callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=mythreshold, verbose=1)
+    # eval_callback = EvalCallback(env, callback_on_new_best=callback_on_best, verbose=1)
+    print("Start the training for", args.trains, "episodes and simulation steps " +str(args.sim_steps) + "\n")
+    # print("Start the training for threshold ", mythreshold,
+    #       "episodes and simulation steps " + str(args.sim_steps) + "\n")
 
     # model.learn(total_timesteps=(args.trains*args.sim_steps))
-    model.learn(int(1e10), callback = eval_callback)
+    # model.learn(int(1e10), callback = eval_callback)
+    model.learn(int(args.trains*args.sim_steps), callback=checkpoint_callback)
+
 
     # save, delete and restore model
     print("Save the model " +str(args.zip)+ " \n")

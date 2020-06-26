@@ -210,8 +210,8 @@ class TorEnv(gym.Env):
 
 
         done =  self.myManager.sim_step() >= self.sim_max_time
-        if(not done and reward==-10000):
-            done = True
+        # if(not done and reward==-10000):
+        #     done = True
         if(done):
             print()
             elapsed_time = time.time()- self.start
@@ -230,7 +230,8 @@ class TorEnv(gym.Env):
             print( str(observation[0]))
 
             # print("Number of forced ToC messages: " + str(self.myManager.forcedToCs))
-            print("Average covered distance of CAV_CV vehs: " + str(self.myManager.cav_dist/sum(self.myManager.ToC_Per_Cell)))
+            if(sum(self.myManager.ToC_Per_Cell) != 0):
+                print("Average covered distance of CAV_CV vehs: " + str(self.myManager.cav_dist/sum(self.myManager.ToC_Per_Cell)))
             print("Average Mean Speed in simulation for both of the lanes: " + str(sum(self.ms)/len(self.ms)))
             print("Average Travel Time in simulation for both of the lanes: " + str(sum(self.tt)/len(self.tt)))
             print()
@@ -291,12 +292,16 @@ class TorEnv(gym.Env):
         # if(wt != 0):
         #     print("WT ", wt)
         #     print("speeds ", observation[3])
-        # speed_pun = 0
+        speed_pun = 0
 
         # for i in range(self.cells_number):
         #     if(i >= 1):
         #         if(observation[3][i] <= 20 and (observation[0][i]+observation[1][i]+observation[2][i]) > 0):
         #             speed_pun += 10
+
+        for i in range(self.cells_number):
+            if(observation[3][i] <= 15 and (observation[0][i]+observation[1][i]+observation[2][i]) > 0):
+                speed_pun += 1
 
         for i in range(2):
             wt += self.myManager.getLaneWait(lanes[i])
@@ -309,20 +314,20 @@ class TorEnv(gym.Env):
 
         if(pun == 0):
             if(wt == 0):
-                # if(speed_pun==0):
-                if(action != 0):
-                    reward = 1 + self.myManager.getCellInfluence(action)
-                    # if(observation[1][action-1] >0 and observation[1][action-1] < 3 ):
-                    #     reward = 1 + self.myManager.getCellInfluence(action)
-                    # else:
-                    # # + self.myManager.getCellInfluence(action)
-                    #     reward = -observation[1][action-1]
+                if(speed_pun==0):
+                    if(action != 0):
+                        reward = 1 + self.myManager.getCellInfluence(action)
+                        # if(observation[1][action-1] >0 and observation[1][action-1] < 3 ):
+                        #     reward = 1 + self.myManager.getCellInfluence(action)
+                        # else:
+                        # # + self.myManager.getCellInfluence(action)
+                        #     reward = -observation[1][action-1]
+                    else:
+                        reward = 1
                 else:
-                    reward = 1
-                # else:
-                #     reward = -speed_pun
+                    reward = -speed_pun*1000
             else:
-                reward = -10000  # wt*1000
+                reward = -10000  # wt*1000                       
         else:
             # print(observation[0])
             reward = -10000
