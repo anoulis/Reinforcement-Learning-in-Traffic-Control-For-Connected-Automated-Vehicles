@@ -12,8 +12,36 @@ def main():
 
 
     # declare model's stored files
-    main_path.append('outputs/simulations/runner/')
-        # main_path.append('outputs/simulations/dnq_sample3012.zip_20200613-123442/')
+    main_path.append('outputs/simulations/runner/')    # main_path.append(
+    #     'outputs/simulations/test_dqn10_full_14_25_empty.zip_20200617-162240/')
+    # main_path.append(
+    #     'outputs/simulations/test_dqn10_full_14_25_cell_Influence.zip_20200617-204821/')
+    # main_path.append('outputs/simulations/new_test_dqn.zip_20200621-130649/')
+    # main_path.append('outputs/simulations/new_test_dqn.zip_20200621-132558/')
+    # main_path.append('outputs/simulations/new_test_dqn.zip_20200621-142100/')
+    # main_path.append('outputs/simulations/new_test_dqn.zip_20200621-155358/')
+    # main_path.append('outputs/simulations/new_test_dqn2.zip_20200621-165417/')
+    # main_path.append('outputs/simulations/new_test_dqn2.zip_20200621-173715/')
+    # main_path.append('outputs/simulations/new_test_dqn2.zip_20200621-181323/')
+    # main_path.append('outputs/simulations/new_test_dqn2.zip_20200622-072245/')
+    # main_path.append('outputs/simulations/new_test_dqn3.zip_20200622-143917/')
+    # main_path.append('outputs/simulations/new_test_dqn3.zip_20200622-152137/')
+    # main_path.append('outputs/simulations/new_test_dqn3.zip_20200622-153320/')
+    # main_path.append('outputs/simulations/new_test_dqn3.zip_20200622-220611/')
+    # main_path.append('outputs/simulations/new_test_dqn3.zip_20200623-091726/')
+    # main_path.append(
+    #     'outputs/simulations/new_test_dqn3_22.zip_20200623-095450/')
+    # main_path.append('outputs/simulations/a2c.zip_20200623-123353/')
+    # main_path.append('outputs/simulations/a2c_first_rf.zip_20200623-125134/')
+
+    # main_path.append('outputs/simulations/a2c_ds_ci.zip_20200624-073807/')
+    main_path.append('outputs/simulations/a2c_ds_ci_2.zip_20200624-081521/')
+    main_path.append('outputs/simulations/best_model.zip_20200626-083722/')
+
+    #################################################################################
+
+    # main_path.append('outputs/simulations/runner/')
+    # main_path.append('outputs/simulations/dnq_sample3012.zip_20200613-123442/')
     main_path.append('outputs/simulations/dnq_sample3015.zip_20200613-143151/')
     # main_path.append('outputs/simulations/dnq_sample4015.zip_20200622-072426/')
     # main_path.append('outputs/simulations/dnq_sample5015.zip_20200615-073715/')
@@ -42,6 +70,7 @@ def main():
         TravelTime = []
         avg_cav_dist = None
         duration_list = []
+        reward = 0
         wt_list = []
         wc_list = []
         tl_list = []
@@ -66,6 +95,7 @@ def main():
                         tt += float(row[5])
                         avg_cav_dist = float(row[2])
                         line_count += 1
+                        reward += float(row[3])
 
             meanSpeed.append(ms/line_count)
             TravelTime.append(tt/line_count)
@@ -95,7 +125,7 @@ def main():
             dd_list.append(dd/counts)
             wc_list.append(wc)
 
-            data.append({'id': int(k+1), 'simulation': int(i+1),  'avg_cav_dist': avg_cav_dist,
+            data.append({'id': int(k+1), 'simulation': int(i+1),  'avg_cav_dist': avg_cav_dist, 'reward': reward,
                          'meanSpeed':  meanSpeed[-1], 'travelTime': TravelTime[-1], 
                          'duration': duration_list[-1], 'timeLoss': tl_list[-1], 'departDelay': dd_list[-1], 'waitingTime': wt_list[-1], 'waitingCount': wc_list[-1]})
 
@@ -157,6 +187,9 @@ def myBoxPlots(path,iteration_number):
     bp_tl = df.boxplot(column='timeLoss', by='id')    
     bp_tl.set_title('Average Time Loss in s')
     pl.savefig('outputs/simulations/comparisons/timeLoss.png')
+    bp_r = df.boxplot(column='reward', by='id')
+    bp_r.set_title('Total Reward')
+    pl.savefig('outputs/simulations/comparisons/reward.png')
     # bp_wt = df.boxplot(column='waitingTime', by='id')
     # df.waitingTime.plot(color='g',lw=1.3)
     # df.id.plot(color='r',lw=1.3)
