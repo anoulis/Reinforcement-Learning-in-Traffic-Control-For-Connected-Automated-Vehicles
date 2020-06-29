@@ -123,7 +123,7 @@ scenario/outputMeandata.xml
 outputSSM.xml
 
 #saved model file
-*.zip
+/*.zip
 dnq_sample.zip
 a2c_sample.zip
 
