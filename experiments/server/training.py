@@ -159,7 +159,7 @@ def main():
         # target_network_update_freq=500,
         # param_noise=True,
         verbose = 2,
-        tensorboard_log="./dqn_tensorboard/"
+        tensorboard_log="./../../../../media/ml_share/noul_ar/dqn_tensorboard/"
     )
     # model = A2C(MlpPolicy, env,
     #             gamma=0.99,
