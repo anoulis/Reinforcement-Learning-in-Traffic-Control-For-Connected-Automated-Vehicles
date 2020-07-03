@@ -24,7 +24,7 @@ ToC_lead_times = {"CAVToC.":10.0, "CVToC.":0.0, "LV.":-1.0}
 NOAD_ZONE_ENTRY_POS = 2300.
 
 class Vehicle:
-    def __init__(self, pos, speed, lane, length, minGap, vehID, automationType, detectionTime, cell):
+    def __init__(self, pos, speed, lane, length, minGap, vehID, automationType, detectionTime, cell, wt):
         self.pos=pos
         self.speed=speed
         self.lane=lane
@@ -38,10 +38,13 @@ class Vehicle:
         self.thTOR = None
         self.origColor = traci.vehicle.getColor(vehID)
         self.cell = cell
+        self.wt = wt
     def setState(self,TOR):
         self.TORstate=TOR
     def updateCell(self,cell):
         self.cell = cell
+    def updateWT(self, wt):
+        self.wt = wt
     def updatePosition(self):
         self.pos=traci.vehicle.getLanePosition(self.ID)
     def getID(self):
@@ -104,14 +107,19 @@ class TraciManager():
         self.vehsLVPerCell = []
         self.speedPerCell = []
         self.densityPerCell = []
+        self.WTPerCell = []
+
         self.step = 0
         self.sendToCs = 0
         self.cells_number = cells_number
         self.ToC_Per_Cell = self.zerolistmaker(self.cells_number)
         self.cav_dist = 0
         self.forcedToCs = 0
+        self.missed = []
 
     def requestToC(self, vehID, vehCell, vehPos, timeUntilMRM):
+        # print("Cell is ", vehCell)
+        # print("Pos is ", vehPos)
         self.ToC_Per_Cell[vehCell-1]+=1
         # it just sum ups the distnace that have covered by ca/cav veh
         self.cav_dist += vehPos
@@ -132,40 +140,40 @@ class TraciManager():
         """
         if(self.cells_number==10):
             if lane == "e0_0":
-                if pos<300:
+                if pos<350:
                     return 2
-                elif pos>300 and pos<800:
+                elif pos>350 and pos<850:
                     return 4
-                elif pos>800 and pos<1300:
+                elif pos>850 and pos<1400:
                     return 6
-                elif pos>1300 and pos<1800:
+                elif pos>1400 and pos<2000:
                     return 8
                 else:
                     return 10
             else:
-                if pos<300:
+                if pos<350:
                     return 1
-                elif pos>300 and pos<800:
+                elif pos>350 and pos<850:
                     return 3
-                elif pos>800 and pos<1300:
+                elif pos>800 and pos<1400:
                     return 5
-                elif pos>1300 and pos<1800:
+                elif pos>1400 and pos<2000:
                     return 7
                 else:
                     return 9
         else:
             if lane == "e0_0":
-                if pos < 350:
+                if pos < 300:
                     return 2
-                elif pos > 350 and pos < 700:
+                elif pos > 300 and pos < 650:
                     return 4
-                elif pos > 700 and pos < 1050:
+                elif pos > 650 and pos < 1000:
                     return 6
-                elif pos > 1050 and pos < 1400:
+                elif pos > 1000 and pos < 1350:
                     return 8
-                elif pos > 1400 and pos < 1750:
+                elif pos > 1350 and pos < 1700:
                     return 10
-                elif pos > 1750 and pos < 2100:
+                elif pos > 1700 and pos < 2000:
                     return 12
                 else:
                     return 14
@@ -231,6 +239,22 @@ class TraciManager():
             else:
                 self.speedPerCell[i] += sum[i]/count[i]
 
+    def setWTperCells(self):
+        """
+        Store the Total Accumulated WT per cell
+        """
+        # sum = self.zerolistmaker(self.cells_number)
+        # count = self.zerolistmaker(self.cells_number)
+        self.WTPerCell = self.zerolistmaker(self.cells_number)
+        for veh in self.CAV_CV:
+            self.WTPerCell[veh.cell-1] += veh.wt
+        for veh in self.pendingToCVehs:
+            self.WTPerCell[veh.cell-1] += veh.wt
+        for veh in self.LVsInToCZone:
+            self.WTPerCell[veh.cell-1] += veh.wt
+        # print(self.WTPerCell)
+
+
     def setdensityperCells(self):
         """
         Store the density of vehs per cell
@@ -246,9 +270,13 @@ class TraciManager():
                 # print(sum/500)
                 self.densityPerCell[i]= sum/500.
 
+
     def getDensityPerCells(self):
         """ Returns the list with densities for all cells """
         return self.densityPerCell
+
+    def getWTPerCells(self):
+        return self.WTPerCell
 
     def getStep(self):
         """ Returns the Simulation step"""
@@ -278,13 +306,13 @@ class TraciManager():
         """ Returns the influence of each cell on the reward"""
         if(self.cells_number == 10):
             if cell==2 or cell==1:
-                return 0.1
-            elif cell==4 or cell==3:
                 return 0.2
-            elif cell==6 or cell==5:
-                return 0.3
-            elif cell==8 or cell==7:
+            elif cell==4 or cell==3:
                 return 0.4
+            elif cell==6 or cell==5:
+                return 0.6
+            elif cell==8 or cell==7:
+                return 0.8
             else:
                 return 0
         else:
@@ -344,6 +372,22 @@ class TraciManager():
                     punishment+=1
         self.latePunishment = punishment
         self.forcedToCs += self.latePunishment
+
+    def sendForced(self):
+        """
+        We send the forced ToC to vehs that have approached the end
+        of the zone and didn't receive ToC message.
+        """
+        limit = 2000
+        for veh in self.missed:
+            if(veh not in self.pendingToCVehs):
+                if(traci.vehicle.getDistance(veh.ID) > limit and (veh.cell == 13 or veh.cell == 14)):
+                    self.requestToC(veh.ID, veh.cell, veh.pos,
+                                    ToC_lead_times[veh.automationType])
+                    self.pendingToCVehs.append(veh)
+                    self.CAV_CV.remove(veh)
+                    self.missed.remove(veh)
+
 
     def get_forced_ToCs(self):
         """ Retuns sum of forced ToC"""
@@ -412,12 +456,18 @@ class TraciManager():
         # print("subscribeState() for vehicle '%s'"%vehID)
         traci.vehicle.subscribe(vehID, [tc.VAR_LANE_ID, tc.VAR_LANEPOSITION, tc.VAR_SPEED])
 
+    def do_steps(self,steps):
+        if(steps>0):
+            self.activatedCell = 0
+            for i in range(steps):
+                i +=1
+                self.call_runner()
 
     def call_runner(self):
         """ Main execution function of the sumo simulation"""
 
         self.step +=1
-        self.ToCs = 0
+        # self.ToCs = 0
         traci.simulationStep()
         t = traci.simulation.getTime()
         # print("\n---------------------------------\nstep: %s (time=%s)"%(step, t))
@@ -458,7 +508,7 @@ class TraciManager():
 
                     veh = Vehicle(pos, traci.vehicle.getSpeed(ID), self.loopLane, \
                                   traci.vehicle.getLength(ID), traci.vehicle.getMinGap(ID), \
-                                  ID, self.automationType, t, self.getCell(pos,self.loopLane))
+                                  ID, self.automationType, t, self.getCell(pos,self.loopLane),0)
 
                     if self.automationType != 'LV.':
                         # Last entered vehicle is automated
@@ -480,12 +530,19 @@ class TraciManager():
         self.early_ToC = 0
         for veh in self.pendingToCVehs:
             veh.updateCell(self.getCell(veh.pos,veh.lane))
+            veh.updateWT(traci.vehicle.getAccumulatedWaitingTime(veh.ID))
+
 
         for veh in self.LVsInToCZone:
             veh.updateCell(self.getCell(veh.pos,veh.lane))
+            veh.updateWT(traci.vehicle.getAccumulatedWaitingTime(veh.ID))
 
         for veh in self.CAV_CV:
-            veh.updateCell(self.getCell(veh.pos,veh.lane))
+            veh.updateCell(self.getCell(veh.pos, veh.lane))
+            if(veh.cell == 13 or veh.cell==14):
+                if( veh not in self.missed):
+                    self.missed.append(veh)
+            veh.updateWT(traci.vehicle.getAccumulatedWaitingTime(veh.ID))
             if(veh not in self.pendingToCVehs):
                 if(self.activatedCell!=0):
                     if (veh.cell == self.activatedCell):
@@ -500,4 +557,5 @@ class TraciManager():
         self.vehsLVPerCell = self.countVehsPerCells(self.LVsInToCZone)
         self.setspeedperCells()
         self.setdensityperCells()
-        self.set_late_punishment()
+        self.setWTperCells()
+        # self.set_late_punishment()
