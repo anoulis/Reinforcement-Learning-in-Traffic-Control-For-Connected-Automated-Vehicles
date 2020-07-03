@@ -95,6 +95,8 @@ def main():
     else:
         print ("Successfully created the directory %s" % path)
 
+    delay = 500
+
     env = gym.make('tor_distribution:tor-v0',
                     cfg_file=args.cfg,
                     net_file=args.network,
@@ -104,7 +106,7 @@ def main():
                     sim_steps = args.sim_steps,
                     trains = args.trains,
                     plot = args.plot,
-                    delay=100,
+                    delay=delay,
                     forced_toc_pun=args.pun,
                     sim_example = True,
                     seed = args.seed,

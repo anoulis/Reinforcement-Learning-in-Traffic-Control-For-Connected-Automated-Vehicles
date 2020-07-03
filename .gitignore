@@ -132,3 +132,4 @@ outputs/
 dqn_tensorboard/
 a2c_tensorboard/
 ppo2_tensorboard/
+logs/
