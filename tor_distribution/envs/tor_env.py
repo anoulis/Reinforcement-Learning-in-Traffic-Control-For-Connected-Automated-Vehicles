@@ -29,7 +29,7 @@ from datetime import datetime
 class TorEnv(gym.Env):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, cfg_file=str("scenario/sumo.cfg"), net_file="scenario/UC5_1.net.xml", route_file='scenario/routes_trafficMix_0_trafficDemand_1_driverBehaviour_OS_seed_0.xml', vTypes_files=['scenario/vTypesCAVToC_OS.add.xml','scenario/vTypesCVToC_OS.add.xml','scenario/vTypesLV_OS.add.xml'], delay=100, out_csv_name=None, sim_steps=200, seed=1024, trains=2, plot=False, use_gui=True, sim_example=False,   forced_toc_pun=1.0, data_path="/home/anoulis/workspace/tor-distribution/outputs/trainings/"):
+    def __init__(self, cfg_file=str("scenario/sumo.cfg"), net_file="scenario/UC5_1.net.xml", route_file='scenario/routes_trafficMix_0_trafficDemand_1_driverBehaviour_OS_seed_0.xml', vTypes_files=['scenario/vTypesCAVToC_OS.add.xml', 'scenario/vTypesCVToC_OS.add.xml', 'scenario/vTypesLV_OS.add.xml'], delay=0, out_csv_name=None, sim_steps=200, seed=1024, trains=2, plot=False, use_gui=True, sim_example=False,   forced_toc_pun=1.0, data_path="/home/anoulis/workspace/tor-distribution/outputs/trainings/"):
         """
         initialization of the environment
 
@@ -37,19 +37,35 @@ class TorEnv(gym.Env):
             Type: Box(4)
             Num	Observation                Min            Max
             1	Cells CAV_CV #n           -Inf            Inf
-            2	Celss pendingToCVehs #n   -Inf            Inf
-            3	Celss LVsInToCZone #n     -Inf            Inf
-            4	Cells Average Speed       -Inf            Inf
-            5	Cells Veh Density         -Inf            Inf
+            2	Cells Average Speed       -Inf            Inf
+            3	Celss pendingToCVehs #n   -Inf            Inf
         Actions:
             Type: Discrete(2)
             Num	Action
             1	Send ToC message Cell 1
             .
             10  Send ToC message Cell 10
-            0	Not Send ToC message
-
         """
+        # """
+        # initialization of the environment
+
+        # Observation:
+        #     Type: Box(4)
+        #     Num	Observation                Min            Max
+        #     1	Cells CAV_CV #n           -Inf            Inf
+        #     2	Celss pendingToCVehs #n   -Inf            Inf
+        #     3	Celss LVsInToCZone #n     -Inf            Inf
+        #     4	Cells Average Speed       -Inf            Inf
+        #     5	Cells Veh Total_AccWT     -Inf            Inf
+        # Actions:
+        #     Type: Discrete(2)
+        #     Num	Action
+        #     1	Send ToC message Cell 1
+        #     .
+        #     10  Send ToC message Cell 10
+        #     0	Not Send ToC message
+
+        # """
 
         super(TorEnv, self).__init__()
         self._cfg = cfg_file
@@ -62,13 +78,16 @@ class TorEnv(gym.Env):
         self._vTypes = vTypes_files
         self.early = 0
         self.late = 0
+        self.missed = 0
+        self.total_reward = 0
+        self.acted_times = 0
         # self.sim_max_time=4833.5
         # self.sim_max_steps=48335
+        self.delay = delay
         self.sim_max_steps=sim_steps
         self.sim_max_time=self.sim_max_steps/10.0
         self.trains = trains
         self.plot= plot
-        self.delay = delay
         self.use_gui = use_gui
         self.x = []
         self.y = []
@@ -91,8 +110,12 @@ class TorEnv(gym.Env):
         traci.start([sumolib.checkBinary('sumo')] + sumo_args)
 
         self.observation_space = spaces.Box(-np.inf, np.inf,
-                                            shape=(5, self.cells_number), dtype=np.float32)
-        self.action_space = spaces.Discrete(self.cells_number+1-2)
+                                            shape=(3, self.cells_number), dtype=np.int)
+        # print(self.observation_space)
+        self.action_space = spaces.Discrete(self.cells_number-2)
+        # self.action_space = spaces.Discrete(2)
+
+        # print(self.action_space)
 
         self.reward_range = (-float('inf'), float('inf'))
         self.run = 0
@@ -104,7 +127,6 @@ class TorEnv(gym.Env):
         self.trafficJams = {}
         self.keepAutonomy = {}
         self.plot = False
-        self.delay = 0
         self.seed = seed
         traci.close()
 
@@ -131,7 +153,11 @@ class TorEnv(gym.Env):
         self.forcedT = 0
         self.tt = []
         self.ms = []
-        self.dealy =0
+        self.missed = 0
+        self.total_reward = 0
+        self.acted_times = 0
+
+        # self.delay =0
 
 
         seperator = ', '
@@ -149,7 +175,7 @@ class TorEnv(gym.Env):
                          "-a", addFilesString]
         else:
             sumo_args = ["-c", self._cfg,
-                         "--seed", str(2000),
+                         "--seed", str(random.randint(1025, 1035)),
                         #  "--random",
                          "-r", self._route,
                          "-a", addFilesString]
@@ -157,8 +183,9 @@ class TorEnv(gym.Env):
 
 
         traci.start([self._sumo_binary] + sumo_args)
-        # for i in range(self.dealy):
-        #     self._sumo_step()
+        self.myManager.do_steps(self.delay)
+
+        # print(self._compute_observations())
         return self._compute_observations()
 
 
@@ -181,36 +208,41 @@ class TorEnv(gym.Env):
         if not pend:
             pend = self.myManager.zerolistmaker(self.cells_number)
 
-        lv =  self.myManager.getLVperCells()
-        if not lv:
-            lv = self.myManager.zerolistmaker(self.cells_number)
+        # lv =  self.myManager.getLVperCells()
+        # if not lv:
+        #     lv = self.myManager.zerolistmaker(self.cells_number)
 
         speeds = self.myManager.getSpeedPerCells()
         if not speeds:
             speeds = self.myManager.zerolistmaker(self.cells_number)
+        speeds = [round(x) for x in speeds]
 
-        density = self.myManager.getDensityPerCells()
-        if not density:
-            density = self.myManager.zerolistmaker(self.cells_number)
+        # density = self.myManager.getDensityPerCells()
+        # if not density:
+        #     density = self.myManager.zerolistmaker(self.cells_number)
 
-        return np.array([av[:self.cells_number], pend[:self.cells_number], lv[:self.cells_number], speeds[:self.cells_number], density[:self.cells_number]], dtype=np.float32)
+        
+        return np.array([av[:self.cells_number], speeds[:self.cells_number], pend[:self.cells_number]], dtype=np.int)
+        # return np.array([av[:self.cells_number], pend[:self.cells_number], lv[:self.cells_number], speeds[:self.cells_number], wt[:self.cells_number]], dtype=np.float32)
 
 
     def step(self, action):
         """
         execute environment step
         """
-
+        # adapt action to cell number
+        action = action+1
         self._apply_actions(action)
         self._sumo_step()
         # observe new state and reward
         observation = self._compute_observations()
-        # print("OBS " + str(observation[4]))
+        # print("OBS " + str(observation))
         reward = self._compute_rewards(action,observation)
+        self.total_reward += reward
 
 
         done =  self.myManager.sim_step() >= self.sim_max_time
-        # if(not done and reward==-10000):
+        # if(not done and reward==-100):
         #     done = True
         if(done):
             print()
@@ -226,14 +258,19 @@ class TorEnv(gym.Env):
             print(self.myManager.ToC_Per_Cell)
 
             print("Total number of ToC messages: " + str(sum(self.myManager.ToC_Per_Cell)))
-            print("CAVS at the last timestep: ")
-            print( str(observation[0]))
+            # print("CAVS at the last timestep: ")
+            # print( str(observation[0]))
+            print("Missed CAVS: ", str(int(self.missed)))
 
             # print("Number of forced ToC messages: " + str(self.myManager.forcedToCs))
             if(sum(self.myManager.ToC_Per_Cell) != 0):
-                print("Average covered distance of CAV_CV vehs: " + str(self.myManager.cav_dist/sum(self.myManager.ToC_Per_Cell)))
+                print("Average covered distance of CAV_CV vehs: " +
+                      str(self.myManager.cav_dist/self.myManager.sendToCs))
             print("Average Mean Speed in simulation for both of the lanes: " + str(sum(self.ms)/len(self.ms)))
             print("Average Travel Time in simulation for both of the lanes: " + str(sum(self.tt)/len(self.tt)))
+            print("Total Reward ", str(self.total_reward))
+            print("Number of Actions ", str(self.acted_times))
+            print("Number of Missed Actions ", str(self.sim_max_steps - self.delay - self.acted_times))
             print()
             self.save_csv(self.data_path, self.run)
 
@@ -254,6 +291,8 @@ class TorEnv(gym.Env):
         """
         if (action != 0):
             self.myManager.activatedCell=action
+        # self.myManager.activatedCell=0
+        
 
 
     def _compute_rewards(self, action, observation):
@@ -289,47 +328,55 @@ class TorEnv(gym.Env):
         pun = 0
         lanes = self.myManager.getAreaLanes()
         wt = 0
-        # if(wt != 0):
-        #     print("WT ", wt)
-        #     print("speeds ", observation[3])
         speed_pun = 0
-
-        # for i in range(self.cells_number):
-        #     if(i >= 1):
-        #         if(observation[3][i] <= 20 and (observation[0][i]+observation[1][i]+observation[2][i]) > 0):
-        #             speed_pun += 10
-
-        for i in range(self.cells_number):
-            if(observation[3][i] <= 15 and (observation[0][i]+observation[1][i]+observation[2][i]) > 0):
-                speed_pun += 1
+        wtpun=0
 
         for i in range(2):
             wt += self.myManager.getLaneWait(lanes[i])
             tt += self.myManager.getLaneTravelTime(lanes[i])
             ms += self.myManager.getLaneMeanSpeed(lanes[i])
 
-        # pun = self.myManager.get_forced_ToCs()
+        # for i in range(self.cells_number):
+        #     if(i >= 1):
+        #         if(observation[3][i] <= 20 and (observation[0][i]+observation[1][i]+observation[2][i]) > 0):
+        #             speed_pun += 10
+
+        # for i in range(self.cells_number):
+        #     if(observation[3][i] <= 15 and (observation[0][i]+observation[1][i]+observation[2][i]) > 0):
+        #         speed_pun += 1
+
+        if((observation[1][action-1]+observation[1][action-1+2])<40 and (observation[1][action-1]+observation[1][action-1+2])>0):
+            wtpun += observation[1][action-1]
+            wtpun += observation[1][action-1+2]
+
+        # if(wt != 0):
+        #     print("WT ", wt)
+        # pun = self.myManager.get_forced_ToCs()       
         pun = observation[0][self.cells_number-1] + \
             observation[0][self.cells_number-2]
 
-        if(pun == 0):
-            if(wt == 0):
-                if(speed_pun==0):
-                    if(action != 0):
-                        reward = 1 + self.myManager.getCellInfluence(action)
-                        # if(observation[1][action-1] >0 and observation[1][action-1] < 3 ):
-                        #     reward = 1 + self.myManager.getCellInfluence(action)
-                        # else:
-                        # # + self.myManager.getCellInfluence(action)
-                        #     reward = -observation[1][action-1]
-                    else:
-                        reward = 1
+        if(wt == 0):
+            if(pun == 0):
+                if(wtpun==0):
+                    self.acted_times += 1
+                    reward = self.myManager.getCellInfluence(action)
+                # if(action != 0):
+                    # if(observation[1][action-1] >0 and observation[1][action-1] < 3 ):
+                    #     reward = 1 + self.myManager.getCellInfluence(action)
+                    # else:
+                    # # + self.myManager.getCellInfluence(action)
+                    #     reward = -observation[1][action-1]
                 else:
-                    reward = -speed_pun*1000
+                    reward = -1
+                # else:
+                #     reward = -speed_pun*1000
             else:
-                reward = -10000  # wt*1000                       
+                self.missed += len(self.myManager.missed)
+                self.myManager.sendForced()
+                reward = -10
+                # print(observation[1])
+                # wt*1000                       
         else:
-            # print(observation[0])
             reward = -10000
 
         return reward
