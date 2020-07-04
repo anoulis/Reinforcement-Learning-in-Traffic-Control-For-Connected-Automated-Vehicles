@@ -345,7 +345,7 @@ class TorEnv(gym.Env):
         #     if(observation[3][i] <= 15 and (observation[0][i]+observation[1][i]+observation[2][i]) > 0):
         #         speed_pun += 1
 
-        if((observation[1][action-1]+observation[1][action-1+2])<40 and (observation[1][action-1]+observation[1][action-1+2])>0):
+        if((observation[1][action-1]+observation[1][action-1+2])<40 and observation[1][action-1] > 0 and observation[1][action-1+2]>0):
             wtpun += observation[1][action-1]
             wtpun += observation[1][action-1+2]
 
@@ -359,7 +359,9 @@ class TorEnv(gym.Env):
             if(pun == 0):
                 if(wtpun==0):
                     self.acted_times += 1
+                    # reward = self.myManager.getCellInfluence(action)*0.1
                     reward = self.myManager.getCellInfluence(action)
+
                 # if(action != 0):
                     # if(observation[1][action-1] >0 and observation[1][action-1] < 3 ):
                     #     reward = 1 + self.myManager.getCellInfluence(action)
@@ -377,7 +379,9 @@ class TorEnv(gym.Env):
                 # print(observation[1])
                 # wt*1000                       
         else:
+            # reward = -100
             reward = -10000
+
 
         return reward
 
