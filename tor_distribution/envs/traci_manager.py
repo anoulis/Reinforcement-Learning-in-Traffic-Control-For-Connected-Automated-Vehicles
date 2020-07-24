@@ -34,8 +34,6 @@ class Vehicle:
         self.TORstate='noTOR'
         self.automationType=automationType
         self.detectionTime = detectionTime
-        self.xTOR = None
-        self.thTOR = None
         self.origColor = traci.vehicle.getColor(vehID)
         self.cell = cell
         self.wt = wt
@@ -93,15 +91,14 @@ class TraciManager():
         self.activatedCell = 0
         self.latePunishment = 0
 
-        # List of CAV/CV platoons in ToC zone. Map: platoon-ID -> platoon object
+        # List of CAV/CVs in ToC zone.
         self.CAV_CV = []
-        self.A =[]
-        self.L=[]
         # List of LVs in ToC zone
         self.LVsInToCZone = []
         # List of C(A)Vs, which received a TOR
         self.pendingToCVehs = []
-        self.early_ToC = 0
+
+        # Lists for storing important values for every cell
         self.vehsAVPerCell = []
         self.vehsPendPerCell = []
         self.vehsLVPerCell = []
@@ -109,6 +106,7 @@ class TraciManager():
         self.densityPerCell = []
         self.WTPerCell = []
 
+        # Varius useful values
         self.step = 0
         self.sendToCs = 0
         self.cells_number = cells_number
@@ -118,12 +116,12 @@ class TraciManager():
         self.missed = []
 
     def requestToC(self, vehID, vehCell, vehPos, timeUntilMRM):
-        # print("Cell is ", vehCell)
-        # print("Pos is ", vehPos)
+        """ 
+        The functiion that implements the ToC request through traci.
+        """
         self.ToC_Per_Cell[vehCell-1]+=1
         # it just sum ups the distnace that have covered by ca/cav veh
         self.cav_dist += vehPos
-        # print("ToC for  " + str(vehID) + " at cell " + str(vehCell))
         traci.vehicle.setParameter(vehID, "device.toc.requestToC", str(timeUntilMRM))
 
     def removeVehiclesBeyond(self, x, vehList):
@@ -136,7 +134,7 @@ class TraciManager():
 
     def getCell(self,pos,lane):
         """
-        return the cell that a veh belongs, base the position
+        Return the cell that a veh belongs, base the position
         """
         if(self.cells_number==10):
             if lane == "e0_0":
@@ -193,8 +191,6 @@ class TraciManager():
                 else:
                     return 13
 
-
-
     def countVehsPerCells(self,vehList):
         """
         Returns a list with the number of specific veh.
@@ -204,20 +200,8 @@ class TraciManager():
         for veh in vehList:
             storeList[veh.cell-1] += 1
         return storeList
-    #
-    # def setAVperCells(self):
-    #     dets = self.getAreaDet()
-    #     self.vehsAVPerCell = self.zerolistmaker(10)
-    #     for veh in self.CAV_CV:
-    #         self.vehsAVPerCell[veh.cell-1] += 1
-    #
-    # def setPendperCells(self):
-    #     dets = self.getAreaDet()
-    #     self.vehsPendPerCell = self.zerolistmaker(10)
-    #     for veh in self.pendingToCVehs:
-    #         self.vehsPendPerCell[veh.cell-1] += 1
 
-    def setspeedperCells(self):
+    def setSpeedperCells(self):
         """
         Store the Average speed per cell
         """
@@ -243,8 +227,6 @@ class TraciManager():
         """
         Store the Total Accumulated WT per cell
         """
-        # sum = self.zerolistmaker(self.cells_number)
-        # count = self.zerolistmaker(self.cells_number)
         self.WTPerCell = self.zerolistmaker(self.cells_number)
         for veh in self.CAV_CV:
             self.WTPerCell[veh.cell-1] += veh.wt
@@ -252,8 +234,6 @@ class TraciManager():
             self.WTPerCell[veh.cell-1] += veh.wt
         for veh in self.LVsInToCZone:
             self.WTPerCell[veh.cell-1] += veh.wt
-        # print(self.WTPerCell)
-
 
     def setdensityperCells(self):
         """
@@ -264,18 +244,16 @@ class TraciManager():
         for i in range(self.cells_number):
             sum = self.vehsAVPerCell[i] + self.vehsPendPerCell[i] + self.vehsLVPerCell[i]
             if(i==1 or 1==2):
-                # print(sum/300)
                 self.densityPerCell[i]= sum/300.
             else:
-                # print(sum/500)
                 self.densityPerCell[i]= sum/500.
-
 
     def getDensityPerCells(self):
         """ Returns the list with densities for all cells """
         return self.densityPerCell
 
     def getWTPerCells(self):
+        """ Returns the ACC_WT for all cells """
         return self.WTPerCell
 
     def getStep(self):
@@ -306,14 +284,15 @@ class TraciManager():
         """ Returns the influence of each cell on the reward"""
         if(self.cells_number == 10):
             if cell==2 or cell==1:
-                return 0.2
+                return 0.1
             elif cell==4 or cell==3:
-                return 0.4
+                return 0.2
             elif cell==6 or cell==5:
-                return 0.6
+                return 0.3
             elif cell==8 or cell==7:
-                return 0.8
+                return 0.4
             else:
+                # return o.5
                 return 0
         else:
             if cell == 2 or cell == 1:
@@ -355,26 +334,33 @@ class TraciManager():
             tj += traci.lanearea.getJamLengthMeters(dets[i])
         return tj
 
-    def set_late_punishment(self):
-        """
-        We count the forced ToC to vehs that have approached the end
-        of the zone and didn't receive ToC message.
-        We store that message, so as to get penalized in rewards calculations.
-        """
-        punishment = 0
-        limit =2000
-        for veh in self.CAV_CV:
-            if(veh not in self.pendingToCVehs):
-                if(traci.vehicle.getDistance(veh.ID)>limit):
-                    # self.requestToC(veh.ID, veh.cell, veh.pos, ToC_lead_times[veh.automationType])
-                    # self.pendingToCVehs.append(veh)
-                    # self.CAV_CV.remove(veh)
-                    punishment+=1
-        self.latePunishment = punishment
-        self.forcedToCs += self.latePunishment
+    # def set_late_punishment(self):
+    #     """
+    #     Old way for calculation of late forced ToCs.
+
+    #     We count the forced ToC to vehs that have approached the end
+    #     of the zone and didn't receive ToC message.
+    #     We store that message, so as to get penalized in rewards calculations.
+    #     """
+    #     punishment = 0
+    #     if(self.cells_number == 10):
+    #         limit =2000
+    #     else:
+    #         limit = 2200
+    #     for veh in self.CAV_CV:
+    #         if(veh not in self.pendingToCVehs):
+    #             if(traci.vehicle.getDistance(veh.ID)>limit):
+    #                 self.requestToC(veh.ID, veh.cell, veh.pos, ToC_lead_times[veh.automationType])
+    #                 self.pendingToCVehs.append(veh)
+    #                 self.CAV_CV.remove(veh)
+    #                 punishment+=1
+    #     self.latePunishment = punishment
+    #     self.forcedToCs += self.latePunishment
 
     def sendForced(self):
         """
+        New way for sending forced ToCs
+
         We send the forced ToC to vehs that have approached the end
         of the zone and didn't receive ToC message.
         """
@@ -527,11 +513,9 @@ class TraciManager():
         for vehs in self.detected:
             self.lastStepDetections.update(vehs)
 
-        self.early_ToC = 0
         for veh in self.pendingToCVehs:
             veh.updateCell(self.getCell(veh.pos,veh.lane))
             veh.updateWT(traci.vehicle.getAccumulatedWaitingTime(veh.ID))
-
 
         for veh in self.LVsInToCZone:
             veh.updateCell(self.getCell(veh.pos,veh.lane))
@@ -555,7 +539,8 @@ class TraciManager():
         self.vehsAVPerCell = self.countVehsPerCells(self.CAV_CV)
         self.vehsPendPerCell = self.countVehsPerCells(self.pendingToCVehs)
         self.vehsLVPerCell = self.countVehsPerCells(self.LVsInToCZone)
-        self.setspeedperCells()
+        self.setSpeedperCells()
         self.setdensityperCells()
         self.setWTperCells()
+        # Dropped approach for calcuation late send ToCs
         # self.set_late_punishment()
