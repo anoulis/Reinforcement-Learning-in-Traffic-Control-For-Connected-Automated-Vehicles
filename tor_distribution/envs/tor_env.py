@@ -289,7 +289,10 @@ class TorEnv(gym.Env):
         # Approach 3
         # reward = self.reward_based_on_Distribution_Speed(action, observation)
         # reward = self.reward_based_on_DS_old(action, observation)
-        reward = self.reward_based_on_DS(action, observation)
+        # reward = self.reward_based_on_DS(action, observation)
+
+        # bad example
+        reward = self.reward_Bad_Example(action, observation)
 
         return reward
     
@@ -338,6 +341,14 @@ class TorEnv(gym.Env):
 
         return reward
 
+    def reward_Bad_Example(self, action, observation):
+        """ Bad model """
+        reward = 0
+
+        # punishment for the sum of forced ToCs
+        reward = observation[0][action-1] + observation[2][action-1]
+
+        return reward
 
     def _sumo_step(self):
         """
