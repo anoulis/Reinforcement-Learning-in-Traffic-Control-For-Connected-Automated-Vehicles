@@ -348,6 +348,19 @@ class TorEnv(gym.Env):
         # punishment for the sum of forced ToCs
         reward = observation[0][action-1] + observation[2][action-1]
 
+        pun = observation[0][self.cells_number-1] + \
+            observation[0][self.cells_number-2]
+        if(pun == 0):
+            ### first try
+            # reward = reward
+            ### second try
+            reward = reward*self.myManager.getCellInfluence(action)
+        else:
+            self.forcedT += len(self.myManager.missed)
+            self.myManager.sendForced()
+            reward = -100
+
+
         return reward
 
     def _sumo_step(self):
