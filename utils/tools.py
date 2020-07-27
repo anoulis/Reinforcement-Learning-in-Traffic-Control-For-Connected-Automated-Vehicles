@@ -10,54 +10,12 @@ def main():
     main_path = []
     outputs_path = 'outputs/simulations/'
 
-
     # declare model's stored files
-    main_path.append('outputs/simulations/runner/')    # main_path.append(
-    #     'outputs/simulations/test_dqn10_full_14_25_empty.zip_20200617-162240/')
-    # main_path.append(
-    #     'outputs/simulations/test_dqn10_full_14_25_cell_Influence.zip_20200617-204821/')
-    # main_path.append('outputs/simulations/new_test_dqn.zip_20200621-130649/')
-    # main_path.append('outputs/simulations/new_test_dqn.zip_20200621-132558/')
-    # main_path.append('outputs/simulations/new_test_dqn.zip_20200621-142100/')
-    # main_path.append('outputs/simulations/new_test_dqn.zip_20200621-155358/')
-    # main_path.append('outputs/simulations/new_test_dqn2.zip_20200621-165417/')
-    # main_path.append('outputs/simulations/new_test_dqn2.zip_20200621-173715/')
-    # main_path.append('outputs/simulations/new_test_dqn2.zip_20200621-181323/')
-    # main_path.append('outputs/simulations/new_test_dqn2.zip_20200622-072245/')
-    # main_path.append('outputs/simulations/new_test_dqn3.zip_20200622-143917/')
-    # main_path.append('outputs/simulations/new_test_dqn3.zip_20200622-152137/')
-    # main_path.append('outputs/simulations/new_test_dqn3.zip_20200622-153320/')
-    # main_path.append('outputs/simulations/new_test_dqn3.zip_20200622-220611/')
-    # main_path.append('outputs/simulations/new_test_dqn3.zip_20200623-091726/')
-    # main_path.append(
-    #     'outputs/simulations/new_test_dqn3_22.zip_20200623-095450/')
-    # main_path.append('outputs/simulations/a2c.zip_20200623-123353/')
-    # main_path.append('outputs/simulations/a2c_first_rf.zip_20200623-125134/')
-
-    # main_path.append('outputs/simulations/a2c_ds_ci.zip_20200624-073807/')
-    main_path.append('outputs/simulations/a2c_ds_ci_2.zip_20200624-081521/')
-    main_path.append('outputs/simulations/best_model.zip_20200626-083722/')
-
-    #################################################################################
-
-    # main_path.append('outputs/simulations/runner/')
-    # main_path.append('outputs/simulations/dnq_sample3012.zip_20200613-123442/')
-    main_path.append('outputs/simulations/dnq_sample3015.zip_20200613-143151/')
-    # main_path.append('outputs/simulations/dnq_sample4015.zip_20200622-072426/')
-    # main_path.append('outputs/simulations/dnq_sample5015.zip_20200615-073715/')
-    # main_path.append('outputs/simulations/dnq_sample302.zip_20200613-165701/')
-    # main_path.append('outputs/simulations/dnq_sample502.zip_20200614-110230/')
-    # main_path.append('outputs/simulations/dnq_sample301515.zip_20200615-211718/')
-    # main_path.append('outputs/simulations/dnq_sample3015_new.zip_20200617-072153/')
-    # main_path.append('outputs/simulations/runner/')
-
-    # main_path.append('outputs/simulations/dnq_sample30_14_25_no_cell.zip_20200618-102941/')
-    # main_path.append('outputs/simulations/dnq_sample35_14_25_no_cell.zip_20200619-072518/')
-    # # main_path.append('outputs/simulations/dnq_sample20_14_25_no_cell.zip_20200620-105722/')
-    # main_path.append('outputs/simulations/dnq_sample10_14_25_no_cell_100.zip_20200620-220627/')
-    # main_path.append('outputs/simulations/dnq_sample20_14_25_no_cell_100.zip_20200621-102117/')
-    main_path.append('outputs/simulations/dnq_dc_seed_30.zip_20200624-101517/')
-    # main_path.append('outputs/simulations/./')
+    main_path.append('outputs/simulations/runner/')
+    main_path.append('final_models/sims/dnq_sample3015.zip_20200613-143151/')
+    main_path.append('final_models/sims/dnq_dc_seed_30.zip_20200624-101517/')
+    main_path.append('final_models/sims/test4.zip_20200717-114640/')
+    main_path.append('final_models/sims/bad_test_2.zip_20200727-100032/')
 
 
     iteration_number = 10

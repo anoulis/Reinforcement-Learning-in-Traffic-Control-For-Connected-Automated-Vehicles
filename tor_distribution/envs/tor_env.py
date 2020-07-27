@@ -289,10 +289,10 @@ class TorEnv(gym.Env):
         # Approach 3
         # reward = self.reward_based_on_Distribution_Speed(action, observation)
         # reward = self.reward_based_on_DS_old(action, observation)
-        # reward = self.reward_based_on_DS(action, observation)
+        reward = self.reward_based_on_DS(action, observation)
 
         # bad example
-        reward = self.reward_Bad_Example(action, observation)
+        # reward = self.reward_Bad_Example(action, observation)
 
         return reward
     
