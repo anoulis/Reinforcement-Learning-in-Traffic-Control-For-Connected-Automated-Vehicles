@@ -133,3 +133,6 @@ dqn_tensorboard/
 a2c_tensorboard/
 ppo2_tensorboard/
 logs/
+models_logs/
+models_zips/
+
