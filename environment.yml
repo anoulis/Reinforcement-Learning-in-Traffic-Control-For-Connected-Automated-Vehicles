@@ -1,12 +1,18 @@
-name: tor
+name: tor-ma
 channels:
+  - anaconda
   - defaults
 dependencies:
-  - pip=20.0.2
-  - python=3.7.7
-  - setuptools=46.1.3
-  - six=1.14.0
-  - tensorflow-gpu=1.14.0
+  - pip=20.1.1
+  - python=3.8.3
+  - six=1.15.0
+  - tensorflow-gpu=2.2.0
   - pip:
     - pytz==2020.1
-    - stable-baselines==2.10.0
+    - ray==0.8.6
+    - pandas
+    - ray[rllib]
+    - ray[tune]
+    - ray[debug]
+    - matplotlib
+    - gputil
