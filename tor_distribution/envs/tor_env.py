@@ -1,3 +1,4 @@
+from ray.rllib.env.multi_agent_env import MultiAgentEnv
 import gym
 from gym import error, spaces, utils
 from gym.utils import seeding
@@ -23,10 +24,7 @@ import time
 from datetime import datetime
 
 
-
-
-
-class TorEnv(gym.Env):
+class TorEnv(MultiAgentEnv):
     metadata = {'render.modes': ['human']}
 
     def __init__(self, cfg_file=str("scenario/sumo.cfg"), net_file="scenario/UC5_1.net.xml", route_file='scenario/routes_trafficMix_0_trafficDemand_1_driverBehaviour_OS_seed_0.xml', vTypes_files=['scenario/vTypesCAVToC_OS.add.xml', 'scenario/vTypesCVToC_OS.add.xml', 'scenario/vTypesLV_OS.add.xml'], delay=0, out_csv_name=None, sim_steps=200, seed=1024, trains=2, plot=False, use_gui=True, sim_example=False,   forced_toc_pun=1.0, data_path="/home/anoulis/workspace/tor-distribution/outputs/trainings/"):
@@ -39,6 +37,7 @@ class TorEnv(gym.Env):
             1	Cells CAV_CV #n           -Inf            Inf
             2	Cells Average Speed       -Inf            Inf
             3	Celss pendingToCVehs #n   -Inf            Inf
+            4	Celss SendedToCs     #n   -Inf            Inf
         Actions:
             Type: Discrete(2)
             Num	Action
@@ -67,7 +66,10 @@ class TorEnv(gym.Env):
 
         # """
 
-        super(TorEnv, self).__init__()
+        # super(TorEnv, self).__init__()
+        self.rsu_ids = [0,1]
+        self.rsuActivatedCells = [0, 0]
+
         self._cfg = cfg_file
         self._network = net_file
         self.last_reward = 0
@@ -93,6 +95,8 @@ class TorEnv(gym.Env):
         self.data_path = data_path
         self.sim_example = sim_example
         self.cells_number = 14
+        self.agents = 2
+        self.cellsPerAgent =int((self.cells_number-2)/self.agents)
 
         seperator = ', '
         vTypesToString = seperator.join(self._vTypes)
@@ -102,9 +106,9 @@ class TorEnv(gym.Env):
 
         traci.start([sumolib.checkBinary('sumo')] + sumo_args)
 
-        self.observation_space = spaces.Box(-np.inf, np.inf,
-                                            shape=(3, self.cells_number), dtype=np.int)
-        self.action_space = spaces.Discrete(self.cells_number-2)
+        self.observation_space = spaces.Box(-1000, 1000,
+                                            shape=(4, int(self.cellsPerAgent+2)), dtype=np.int)
+        self.action_space = spaces.Discrete(self.cellsPerAgent)
 
         self.reward_range = (-float('inf'), float('inf'))
         self.run = 0
@@ -120,10 +124,10 @@ class TorEnv(gym.Env):
         """
         self.start = time.time()
         if self.run != 0:
-            self.myManager = TraciManager(self.cells_number)
             traci.close()
             # self.save_csv(self.data_path, self.run)
-
+        self.rsu_ids = [0, 1]
+        self.rsuActivatedCells = [0, 0]
         self.run += 1
         self.metrics = []
         self.x = []
@@ -154,6 +158,7 @@ class TorEnv(gym.Env):
                          "-a", addFilesString]
 
         traci.start([self._sumo_binary] + sumo_args)
+        self.myManager = TraciManager(self.cells_number)
         self.myManager.do_steps(self.delay)
 
         return self._compute_observations()
@@ -164,6 +169,8 @@ class TorEnv(gym.Env):
         Compute the observations arrays.
         It also store the TravelTime and MeanSpeed of Current step.
         """
+        observations = {}
+
 
         tt=0
         ms = 0
@@ -195,9 +202,33 @@ class TorEnv(gym.Env):
         # density = self.myManager.getDensityPerCells()
         # if not density:
         #     density = self.myManager.zerolistmaker(self.cells_number)
+        i = 0
+        for rsu in self.rsu_ids:
+            templ1 = []
+            templ2 = []
+            templ3 = []
+            templ1 = av[i:int(self.cellsPerAgent+i)]
+            templ1.append(av[self.cells_number-1])
+            templ1.append(av[self.cells_number-2])
 
-        return np.array([av[:self.cells_number], speeds[:self.cells_number], pend[:self.cells_number]], dtype=np.int)
+            templ2 = speeds[i:int(self.cellsPerAgent+i)]
+            templ2.append(speeds[self.cells_number-1])            
+            templ2.append(speeds[self.cells_number-2])
+
+            templ3 = pend[i:int(self.cellsPerAgent+i)]
+            templ3.append(pend[self.cells_number-1])
+            templ3.append(pend[self.cells_number-2])
+
+            templ4 = self.myManager.ToC_Per_Cell[i:int(self.cellsPerAgent+i)]
+            templ4.append(self.myManager.ToC_Per_Cell[self.cells_number-1])
+            templ4.append(self.myManager.ToC_Per_Cell[self.cells_number-2])
+
+            observations[rsu] = np.array(
+                [templ1, templ2, templ3, templ4], dtype=np.int)
+            i += self.cellsPerAgent
+        # return np.array([av[:self.cells_number], speeds[:self.cells_number], pend[:self.cells_number]], dtype=np.int)
         # return np.array([av[:self.cells_number], pend[:self.cells_number], lv[:self.cells_number], speeds[:self.cells_number], wt[:self.cells_number]], dtype=np.float32)
+        return observations
 
 
     def step(self, action):
@@ -205,14 +236,13 @@ class TorEnv(gym.Env):
         Execute environment step
         """
         # adapt action to cell number as the action 0 removed
-        action = action+1
         self._apply_actions(action)
         self._sumo_step()
 
         # observe new state and reward
         observation = self._compute_observations()
         reward = self._compute_rewards(action,observation)
-        self.total_reward += reward
+        # self.total_reward += reward
         done =  self.myManager.sim_step() >= self.sim_max_time
         if(done):
             print()
@@ -234,33 +264,43 @@ class TorEnv(gym.Env):
             # print("Number of forced ToC messages: " + str(self.myManager.forcedToCs))
             if(sum(self.myManager.ToC_Per_Cell) != 0):
                 print("Average covered distance of CAV_CV vehs: " +
-                      str(self.myManager.cav_dist/self.myManager.sendToCs))
+                      str(self.myManager.cav_dist/sum(self.myManager.ToC_Per_Cell)))
             print("Average Mean Speed in simulation for both of the lanes: " + str(sum(self.ms)/len(self.ms)))
             print("Average Travel Time in simulation for both of the lanes: " + str(sum(self.tt)/len(self.tt)))
-            print("Total Reward ", str(self.total_reward))
-            print("Number of Actions ", str(self.acted_times))
-            print("Number of Missed Actions ", str(self.sim_max_steps - self.delay - self.acted_times))
+            # print("Total Reward ", str(self.total_reward))
+            # print("Number of Actions ", str(self.acted_times))
+            # print("Number of Missed Actions ", str(self.sim_max_steps - self.delay - self.acted_times))
             print()
-            self.save_csv(self.data_path, self.run)
+            if(self.sim_example):
+                self.save_csv(self.data_path, self.run)
+
+
 
             # if(self.plot):
             #     self.myplot(self.x,self.tt,"Timestamp", "TravelTime")
+        done = {'__all__': self.myManager.sim_step() >= self.sim_max_time}
 
         info = self._compute_step_info(action, observation)
         self.metrics.append(info)
-        self.last_reward = reward
+        # self.last_reward = reward
 
-        return observation, reward, done, info
+        return observation, reward, done, {}
 
 
-    def _apply_actions(self, action):
+    def _apply_actions(self, actions):
         """
         Apply the actions in the environment
         More specifically store the activatedCell.
         """
-        if (action != 0):
-            self.myManager.activatedCell=action
+        # if (action != 0):
+            # self.myManager.activatedCell=action
         # self.myManager.activatedCell=0
+        i = 0
+        for rsu, action in actions.items():
+            self.rsuActivatedCells[rsu] = int(action+1+i)
+            self.myManager.activatedCell[rsu] = int(action+1+i)
+            i+=self.cellsPerAgent
+
         
 
     def _compute_rewards(self, action, observation):
@@ -293,7 +333,6 @@ class TorEnv(gym.Env):
 
         # bad example
         # reward = self.reward_Bad_Example(action, observation)
-
         return reward
     
 
@@ -307,39 +346,51 @@ class TorEnv(gym.Env):
         Appearence of WT -> huge negative rewards.
 
         """
-        reward = 0
-        pun = 0
-        lanes = self.myManager.getAreaLanes()
+        rewards = {}
         wt = 0
-        wtpun=0
-
+        lanes = self.myManager.getAreaLanes()
         for i in range(2):
             wt += self.myManager.getLaneWait(lanes[i])
+        
+        i=0
+        for rsu in self.rsu_ids:
 
-        if(observation[1][action-1] < 15):
-            wtpun += 1
-        if((observation[1][action-1]+observation[1][action-1+2])<40 and observation[1][action-1] > 0 and observation[1][action-1+2]>0):
-            wtpun += observation[1][action-1]
-            wtpun += observation[1][action-1+2]
-    
-        pun = observation[0][self.cells_number-1] + \
-            observation[0][self.cells_number-2]
+            reward = 0
+            pun = 0
+            wtpun=0
+            action = self.rsuActivatedCells[rsu]
 
-        if(wt == 0):
-            if(pun == 0):
-                if(wtpun==0):
-                    self.acted_times += 1
-                    reward = self.myManager.getCellInfluence(action)
+
+            if(observation[rsu][1][action-1-i] < 15 and observation[rsu][1][action-1-i] > 0 and observation[rsu][1][action-1+2-i] > 0):
+                wtpun += 1
+            if((observation[rsu][1][action-1-i]+observation[rsu][1][action-1+2-i]) < 40 and observation[rsu][1][action-1-i] > 0 and observation[rsu][1][action-1+2-i] > 0):
+                wtpun += 1 #observation[rsu][1][action-1-i]
+                # wtpun += observation[rsu][1][action-1+2-i]
+        
+            pun = observation[rsu][0][self.cellsPerAgent] + \
+                observation[rsu][0][self.cellsPerAgent+1]
+
+            if(wt == 0):
+                if(pun == 0):
+                    if(wtpun==0):
+                        # self.acted_times += 1
+                        if(observation[rsu][2][action-1-i] == 0 or self.myManager.getDecidedToCs()[rsu] == 0):
+                            reward = 0
+                        else:
+                            reward = self.myManager.getCellInfluence(action)
+                        # reward = 1
+                    else:
+                        reward = -1
                 else:
-                    reward = -1
+                    self.forcedT += len(self.myManager.missed)
+                    self.myManager.sendForced()
+                    reward = -10                 
             else:
-                self.forcedT += len(self.myManager.missed)
-                self.myManager.sendForced()
-                reward = -10                 
-        else:
-            reward = -10000
+                reward = -10000
+            i += self.cellsPerAgent
+            rewards[rsu] = float(reward)
 
-        return reward
+        return rewards
 
     def reward_Bad_Example(self, action, observation):
         """ Bad model """
@@ -381,9 +432,9 @@ class TorEnv(gym.Env):
 
         return {
             'step_time': float(self.myManager.sim_step()),
-            'action': action,
+            # 'action': action,
             'avg_cav_dist' : cav_avg,
-            'reward': self.last_reward,
+            # 'reward': self.last_reward,
             'meanSpeed':  self.ms[-1],
             'TravelTime': self.tt[-1],
             'ForcedT': self.forcedT,

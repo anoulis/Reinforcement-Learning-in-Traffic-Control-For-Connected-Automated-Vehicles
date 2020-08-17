@@ -88,7 +88,8 @@ class TraciManager():
         # Last step detected vehicles (to avoid duplicate additions to platoons)
         self.lastStepDetections = [set() for _ in self.loops]
 
-        self.activatedCell = 0
+        self.activatedCell = self.zerolistmaker(2)
+
         self.latePunishment = 0
 
         # List of CAV/CVs in ToC zone.
@@ -108,7 +109,8 @@ class TraciManager():
 
         # Varius useful values
         self.step = 0
-        self.sendToCs = 0
+        self.sendToCs = self.zerolistmaker(2)
+        self.totalSendToCs = 0
         self.cells_number = cells_number
         self.ToC_Per_Cell = self.zerolistmaker(self.cells_number)
         self.cav_dist = 0
@@ -444,7 +446,7 @@ class TraciManager():
 
     def do_steps(self,steps):
         if(steps>0):
-            self.activatedCell = 0
+            self.activatedCell = self.zerolistmaker(2)
             for i in range(steps):
                 i +=1
                 self.call_runner()
@@ -453,6 +455,8 @@ class TraciManager():
         """ Main execution function of the sumo simulation"""
 
         self.step +=1
+        self.sendToCs = self.zerolistmaker(2)
+        self.totalSendToCs = 0
         # self.ToCs = 0
         traci.simulationStep()
         t = traci.simulation.getTime()
@@ -528,13 +532,18 @@ class TraciManager():
                     self.missed.append(veh)
             veh.updateWT(traci.vehicle.getAccumulatedWaitingTime(veh.ID))
             if(veh not in self.pendingToCVehs):
-                if(self.activatedCell!=0):
-                    if (veh.cell == self.activatedCell):
-                        # self.calculate_early_punishment(veh.cell)
-                        self.requestToC(veh.ID, veh.cell, veh.pos, ToC_lead_times[veh.automationType])
-                        self.sendToCs += 1
-                        self.pendingToCVehs.append(veh)
-                        self.CAV_CV.remove(veh)
+                # if(self.activatedCell!=0):
+                # print()
+                if (veh.cell == self.activatedCell[0] or veh.cell == self.activatedCell[1]):
+                    # self.calculate_early_punishment(veh.cell)
+                    self.requestToC(veh.ID, veh.cell, veh.pos, ToC_lead_times[veh.automationType])
+                    self.totalSendToCs =+1
+                    if(veh.cell >6):
+                        self.sendToCs[1] = 1
+                    else:
+                        self.sendToCs[0] = 1
+                    self.pendingToCVehs.append(veh)
+                    self.CAV_CV.remove(veh)
 
         self.vehsAVPerCell = self.countVehsPerCells(self.CAV_CV)
         self.vehsPendPerCell = self.countVehsPerCells(self.pendingToCVehs)
