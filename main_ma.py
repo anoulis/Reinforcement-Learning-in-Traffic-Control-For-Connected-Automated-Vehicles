@@ -52,6 +52,11 @@ import time
 import os
 from datetime import datetime
 from callbacks import MyCallbacks
+import tempfile
+from  ray.tune.logger import UnifiedLogger
+
+DEFAULT_RESULTS_DIR = '/home/anoulis/ray_results'
+
 
 def main():
     start = time.time()
@@ -105,6 +110,7 @@ def main():
     delay = 0
     envName = "tor-v0"
     eval_path = ""
+
     
     if args.mode == 'train':
             # Register the model and environment
@@ -186,8 +192,27 @@ def do_training(envName, sim_steps, trains):
         "num_workers": n_cpus,
         "callbacks": MyCallbacks,
     }
+    timestr = datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
+    logdir_prefix = "{}__{}".format('DQN',timestr)
 
-    trainer = DQNTrainer(env=envName, config=myConfig)
+    def default_logger_creator(config):
+        """Creates a Unified logger with a default logdir prefix
+        containing the agent name and the env id
+        """
+        if not os.path.exists(DEFAULT_RESULTS_DIR):
+            os.makedirs(DEFAULT_RESULTS_DIR)
+        logdir = tempfile.mkdtemp(
+            prefix=logdir_prefix, dir=DEFAULT_RESULTS_DIR)
+        return UnifiedLogger(config, logdir, loggers=None)
+
+
+    trainer = DQNTrainer(env=envName, config=myConfig,
+                         logger_creator=default_logger_creator)
+    # if logger_creator is None:
+    #     timestr = datetime.today().strftime("%Y-%m-%d_%H-%M-%S")
+    #     logdir_prefix = "{}_{}_{}".format(self._name, self._env_id,
+    #                                       timestr)
+    #     logger_creator = default_logger_creator()
 
     for i in range(trains):
         print(f'== Training Iteration {i+1}==')
