@@ -270,6 +270,8 @@ def create_parser(parser_creator=None):
                         default=1024, help="Seed number.\n"),
     parser.add_argument("-simulations", dest="simulations", type=int,
                         default=10, help="Number of simulation examples.\n"),
+    parser.add_argument(
+        "-eval_path", type=str, help="Code name.")
 
     return parser
 
@@ -480,7 +482,7 @@ def rollout(agent,
             steps += 1
             obs = next_obs
         saver.end_rollout()
-        print("Episode #{}: reward: {}".format(episodes, reward_total))
+        print("Episode #{}: reward: {}".format(episodes+1, reward_total))
         if done:
             episodes += 1
 
@@ -489,9 +491,9 @@ if __name__ == "__main__":
     parser = create_parser()
     args = parser.parse_args()
     experiment_time = str(datetime.now()).split('.')[0]
-    test_name = args.checkpoint[26:-28]
-    path = os.getcwd() + "/outputs/simulations/" + test_name + \
-        "_"+datetime.now().strftime("%Y%m%d-%H%M%S")
+
+    path = os.getcwd() + "/outputs/simulations/" + args.eval_path + \
+        "__"+datetime.now().strftime("%Y%m%d-%H%M%S")
 
     try:
         if not os.path.exists(path):

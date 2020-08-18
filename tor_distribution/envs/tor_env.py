@@ -106,7 +106,7 @@ class TorEnv(MultiAgentEnv):
 
         traci.start([sumolib.checkBinary('sumo')] + sumo_args)
 
-        self.observation_space = spaces.Box(-1000, 1000,
+        self.observation_space = spaces.Box(-100000, 100000,
                                             shape=(4, int(self.cellsPerAgent+2)), dtype=np.int)
         self.action_space = spaces.Discrete(self.cellsPerAgent)
 
@@ -282,7 +282,7 @@ class TorEnv(MultiAgentEnv):
 
         info = self._compute_step_info(action, observation)
         self.metrics.append(info)
-        # self.last_reward = reward
+        self.last_reward = sum(reward.values())
 
         return observation, reward, done, {}
 
@@ -434,10 +434,10 @@ class TorEnv(MultiAgentEnv):
             'step_time': float(self.myManager.sim_step()),
             # 'action': action,
             'avg_cav_dist' : cav_avg,
-            # 'reward': self.last_reward,
             'meanSpeed':  self.ms[-1],
             'TravelTime': self.tt[-1],
             'ForcedT': self.forcedT,
+            'reward': float(self.last_reward),
             }
 
 

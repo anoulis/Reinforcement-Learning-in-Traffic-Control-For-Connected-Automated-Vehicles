@@ -55,7 +55,8 @@ from callbacks import MyCallbacks
 import tempfile
 from  ray.tune.logger import UnifiedLogger
 
-DEFAULT_RESULTS_DIR = '/home/anoulis/ray_results'
+# DEFAULT_RESULTS_DIR = '/home/anoulis/ray_results'
+DEFAULT_RESULTS_DIR = os.getcwd() + "/outputs/ray_results/"
 
 
 def main():
@@ -103,13 +104,13 @@ def main():
     args = parser.parse_args()
     experiment_time = str(datetime.now()).split('.')[0]
 
-    # data folder for every experiment
-    path = os.getcwd() + "/outputs/" + datetime.now().strftime("%Y%m%d-%H%M%S")
-    # path = os.getcwd() + "/outputs/trainings/" + args.zip+"_"+datetime.now().strftime("%Y%m%d-%H%M%S")
-
     delay = 0
     envName = "tor-v0"
-    eval_path = ""
+    eval_path = "/outputs/ray_results/DQN__2020-08-18_12-22-51sruk50j0/checkpoint_5/checkpoint-5"
+
+    # data folder for every experiment
+    # path = os.getcwd() + "/outputs/" + eval_path+"/"+ datetime.now().strftime("%Y%m%d-%H%M%S")
+    # path = os.getcwd() + "/outputs/trainings/" + args.zip+"_"+datetime.now().strftime("%Y%m%d-%H%M%S")
 
     
     if args.mode == 'train':
@@ -124,8 +125,7 @@ def main():
                             trains = args.trains,
                             plot = args.plot,
                             delay=delay,
-                            forced_toc_pun=args.pun,
-                            data_path = path))
+                            forced_toc_pun=args.pun))
             
             try:
                 do_training(envName, args.sim_steps, args.trains)
@@ -135,8 +135,8 @@ def main():
 
     elif args.mode == 'eval':
         print("Let's test")
-        rollout('/home/anoulis/ray_results/'+eval_path,
-                envName, args.sim_steps, args.simulations)
+        rollout(os.getcwd()+eval_path,
+                envName, args.sim_steps, args.simulations, eval_path[20:44])
 
 def policy_mapping_fn(agent_id):
     # if agent_id == 0:
@@ -149,7 +149,7 @@ def policy_mapping_fn(agent_id):
 def do_training(envName, sim_steps, trains):
     """Train policies using the DQN algorithm in RLlib."""
 
-    obs_space = spaces.Box(low=-1000, high=1000,shape=(4, 8), dtype=np.int)
+    obs_space = spaces.Box(low=-100000, high=100000,shape=(4, 8), dtype=np.int)
     act_space = spaces.Discrete(6)
 
     policies = {
@@ -163,8 +163,10 @@ def do_training(envName, sim_steps, trains):
     labels = n_cpus
     # policies_to_train = ['dqn_policy']
 
-    ray.init(num_cpus=n_cpus + 1, memory=6000 * 1024 * 1024,
-             object_store_memory=3000 * 1024 * 1024)
+    
+    #ray.init(num_cpus=n_cpus + 1, memory=6000 * 1024 * 1024,object_store_memory=3000 * 1024 * 1024)
+    # Back to default ray initialization
+    ray.init()
 
     myConfig = {
 
@@ -227,7 +229,7 @@ def do_training(envName, sim_steps, trains):
     ray.shutdown()
 
 
-def rollout(checkpoint_path, envName, sim_steps, simulations):
+def rollout(checkpoint_path, envName, sim_steps, simulations,eval_path):
     subprocess.call([
         sys.executable,
         './rollout.py', checkpoint_path,
@@ -236,7 +238,8 @@ def rollout(checkpoint_path, envName, sim_steps, simulations):
         '--run', 'DQN',
         '--no-render',
         '-sim_steps', str(sim_steps),
-        '-simulations', str(simulations)
+        '-simulations', str(simulations),
+        '-eval_path',eval_path
     ])
 
 if __name__ == '__main__':
