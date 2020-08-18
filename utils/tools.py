@@ -15,7 +15,8 @@ def main():
     main_path.append('final_models/sims/dnq_sample3015.zip_20200613-143151/')
     main_path.append('final_models/sims/dnq_dc_seed_30.zip_20200624-101517/')
     main_path.append('final_models/sims/test4.zip_20200717-114640/')
-    main_path.append('final_models/sims/bad_test_2.zip_20200727-100032/')
+    # main_path.append('final_models/sims/bad_test_2.zip_20200727-100032/')
+
 
 
     iteration_number = 10
@@ -49,11 +50,18 @@ def main():
                         # print(f'Column names are {", ".join(row)}')
                         line_count += 1
                     else:
-                        ms += float(row[4])
-                        tt += float(row[5])
-                        avg_cav_dist = float(row[2])
-                        line_count += 1
-                        reward += float(row[3])
+                        if(len(row)==6):
+                            ms += float(row[2])
+                            tt += float(row[3])
+                            avg_cav_dist = float(row[1])
+                            line_count += 1
+                            reward += float(row[5])
+                        else:
+                            ms += float(row[4])
+                            tt += float(row[5])
+                            avg_cav_dist = float(row[2])
+                            line_count += 1
+                            reward += float(row[3])
 
             meanSpeed.append(ms/line_count)
             TravelTime.append(tt/line_count)
