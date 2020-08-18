@@ -56,7 +56,7 @@ import tempfile
 from  ray.tune.logger import UnifiedLogger
 
 # DEFAULT_RESULTS_DIR = '/home/anoulis/ray_results'
-DEFAULT_RESULTS_DIR = os.getcwd() + "/outputs/ray_results/"
+DEFAULT_RESULTS_DIR = '/media/ml_share/noul_ar/outputs/ray_results/'
 
 
 def main():
@@ -106,7 +106,7 @@ def main():
 
     delay = 0
     envName = "tor-v0"
-    eval_path = "/outputs/ray_results/DQN__2020-08-18_12-22-51sruk50j0/checkpoint_5/checkpoint-5"
+    eval_path = "DQN__2020-08-18_13-08-259m07mf54/checkpoint_1/checkpoint-1"
 
     # data folder for every experiment
     # path = os.getcwd() + "/outputs/" + eval_path+"/"+ datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -135,8 +135,8 @@ def main():
 
     elif args.mode == 'eval':
         print("Let's test")
-        rollout(os.getcwd()+eval_path,
-                envName, args.sim_steps, args.simulations, eval_path[20:44])
+        rollout(DEFAULT_RESULTS_DIR+eval_path,
+                envName, args.sim_steps, args.simulations, eval_path[0:24])
 
 def policy_mapping_fn(agent_id):
     # if agent_id == 0:
