@@ -55,7 +55,7 @@ from callbacks import MyCallbacks
 import tempfile
 from  ray.tune.logger import UnifiedLogger
 
-# DEFAULT_RESULTS_DIR = '/home/anoulis/ray_results'
+# DEFAULT_RESULTS_DIR = '/home/anoulis/workspace/tor-distribution/outputs/ray_results/'
 DEFAULT_RESULTS_DIR = '/media/ml_share/noul_ar/outputs/ray_results/'
 
 
@@ -106,8 +106,8 @@ def main():
 
     delay = 0
     envName = "tor-v0"
-    eval_path = "DQN__2020-08-18_13-08-259m07mf54/checkpoint_1/checkpoint-1"
-
+    eval_path = ""
+  
     # data folder for every experiment
     # path = os.getcwd() + "/outputs/" + eval_path+"/"+ datetime.now().strftime("%Y%m%d-%H%M%S")
     # path = os.getcwd() + "/outputs/trainings/" + args.zip+"_"+datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -150,7 +150,7 @@ def do_training(envName, sim_steps, trains):
     """Train policies using the DQN algorithm in RLlib."""
 
     obs_space = spaces.Box(low=-100000, high=100000,shape=(4, 8), dtype=np.int)
-    act_space = spaces.Discrete(6)
+    act_space = spaces.Discrete(7)
 
     policies = {
         'dqn_policy': (DQNTFPolicy, obs_space, act_space, {}),
@@ -172,11 +172,11 @@ def do_training(envName, sim_steps, trains):
 
         # Mutli Agent Configs
         "multiagent": {
-            # "model": {
-            #     "custom_model": "custom_loss",
+            "model": {
+                "custom_model": "custom_loss",
             #     "use_lstm": True,
             #     "lstm_use_prev_action_reward": True,
-            # },
+            },
             "policies": policies,
             "policy_mapping_fn": policy_mapping_fn,
             # "policies_to_train": policies_to_train

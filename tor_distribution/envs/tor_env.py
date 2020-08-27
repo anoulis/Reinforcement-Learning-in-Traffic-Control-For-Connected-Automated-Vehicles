@@ -112,7 +112,7 @@ class TorEnv(MultiAgentEnv):
 
         self.reward_range = (-float('inf'), float('inf'))
         self.run = 0
-        self.myManager = TraciManager(self.cells_number)
+        self.myManager = TraciManager(self.cells_number+1)
         self.plot = False
         self.seed = seed
         traci.close()
@@ -297,8 +297,12 @@ class TorEnv(MultiAgentEnv):
         # self.myManager.activatedCell=0
         i = 0
         for rsu, action in actions.items():
-            self.rsuActivatedCells[rsu] = int(action+1+i)
-            self.myManager.activatedCell[rsu] = int(action+1+i)
+            if(action == 6):
+                self.rsuActivatedCells[rsu] = -1
+                self.myManager.activatedCell[rsu] = -1
+            else:
+                self.rsuActivatedCells[rsu] = int(action+1+i)
+                self.myManager.activatedCell[rsu] = int(action+1+i)
             i+=self.cellsPerAgent
 
         
@@ -354,18 +358,16 @@ class TorEnv(MultiAgentEnv):
         
         i=0
         for rsu in self.rsu_ids:
-
             reward = 0
             pun = 0
             wtpun=0
             action = self.rsuActivatedCells[rsu]
 
-
-            if(observation[rsu][1][action-1-i] < 15 and observation[rsu][1][action-1-i] > 0 and observation[rsu][1][action-1+2-i] > 0):
-                wtpun += 1
-            if((observation[rsu][1][action-1-i]+observation[rsu][1][action-1+2-i]) < 40 and observation[rsu][1][action-1-i] > 0 and observation[rsu][1][action-1+2-i] > 0):
-                wtpun += 1 #observation[rsu][1][action-1-i]
-                # wtpun += observation[rsu][1][action-1+2-i]
+            if(action !=-1):
+                if(observation[rsu][1][action-1-i] < 15 and observation[rsu][1][action-1-i] > 0 and observation[rsu][1][action-1+2-i] > 0):
+                    wtpun += 1
+                if((observation[rsu][1][action-1-i]+observation[rsu][1][action-1+2-i]) < 40 and observation[rsu][1][action-1-i] > 0 and observation[rsu][1][action-1+2-i] > 0):
+                    wtpun += 1
         
             pun = observation[rsu][0][self.cellsPerAgent] + \
                 observation[rsu][0][self.cellsPerAgent+1]
@@ -374,11 +376,16 @@ class TorEnv(MultiAgentEnv):
                 if(pun == 0):
                     if(wtpun==0):
                         # self.acted_times += 1
-                        if(observation[rsu][2][action-1-i] == 0 or self.myManager.getDecidedToCs()[rsu] == 0):
-                            reward = 0
+                        if(action != -1):
+                            if(observation[rsu][2][action-1-i] == 0 or self.myManager.getDecidedToCs()[rsu] == 0):
+                                reward = 0
+                            else:
+                                reward = self.myManager.getCellInfluence(action)
                         else:
-                            reward = self.myManager.getCellInfluence(action)
-                        # reward = 1
+                            if(rsu==0):
+                                reward = 1
+                            else:
+                                reward = -1
                     else:
                         reward = -1
                 else:
