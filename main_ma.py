@@ -112,7 +112,9 @@ def main():
     # path = os.getcwd() + "/outputs/" + eval_path+"/"+ datetime.now().strftime("%Y%m%d-%H%M%S")
     # path = os.getcwd() + "/outputs/trainings/" + args.zip+"_"+datetime.now().strftime("%Y%m%d-%H%M%S")
 
-    
+    cells_number = 14
+    agents = 2
+    cellsPerAgent = int((cells_number-2)/agents)
     if args.mode == 'train':
             # Register the model and environment
             register_env(envName, lambda _: TorEnv(
@@ -125,10 +127,10 @@ def main():
                             trains = args.trains,
                             plot = args.plot,
                             delay=delay,
-                            forced_toc_pun=args.pun))
+                            agents=agents))
             
             try:
-                do_training(envName, args.sim_steps, args.trains)
+                do_training(envName, args.sim_steps, args.trains,agents)
             except AssertionError as error:
                 print(error)
                 print("Problem on training")
@@ -136,7 +138,7 @@ def main():
     elif args.mode == 'eval':
         print("Let's test")
         rollout(DEFAULT_RESULTS_DIR+eval_path,
-                envName, args.sim_steps, args.simulations, eval_path[0:24])
+                envName, args.sim_steps, args.simulations, eval_path[0:24],agents)
 
 def policy_mapping_fn(agent_id):
     # if agent_id == 0:
@@ -146,11 +148,15 @@ def policy_mapping_fn(agent_id):
     return "dqn_policy"
 
 
-def do_training(envName, sim_steps, trains):
+def do_training(envName, sim_steps, trains, agents):
     """Train policies using the DQN algorithm in RLlib."""
 
-    obs_space = spaces.Box(low=-100000, high=100000,shape=(4, 8), dtype=np.int)
-    act_space = spaces.Discrete(7)
+    cells_number = 14
+    cellsPerAgent = int((cells_number-2)/agents)
+
+    obs_space = spaces.Box(low=-100000, high=100000,
+                           shape=(4, int(cellsPerAgent+2)), dtype=np.int)
+    act_space = spaces.Discrete(cellsPerAgent+1)
 
     policies = {
         'dqn_policy': (DQNTFPolicy, obs_space, act_space, {}),
@@ -186,6 +192,22 @@ def do_training(envName, sim_steps, trains):
         "lr": 0.0005,
         "target_network_update_freq": 100,
         "buffer_size": 300000,
+        # === Exploration Settings ===
+        "exploration_config": {
+            # The Exploration class to use.
+            "type": "EpsilonGreedy",
+            # Config for the Exploration class' constructor:
+            "initial_epsilon": 1.0,
+            "final_epsilon": 0.02,
+            # Timesteps over which to anneal epsilon.
+            "epsilon_timesteps": 0.1 * sim_steps * trains,
+
+            # For soft_q, use:
+            # "exploration_config" = {
+            #   "type": "SoftQ"
+            #   "temperature": [float, e.g. 1.0]
+            # }
+        },
 
         # Train-Sim Params
         'timesteps_per_iteration':sim_steps,
@@ -229,7 +251,7 @@ def do_training(envName, sim_steps, trains):
     ray.shutdown()
 
 
-def rollout(checkpoint_path, envName, sim_steps, simulations,eval_path):
+def rollout(checkpoint_path, envName, sim_steps, simulations,eval_path, agents):
     subprocess.call([
         sys.executable,
         './rollout.py', checkpoint_path,
@@ -239,7 +261,8 @@ def rollout(checkpoint_path, envName, sim_steps, simulations,eval_path):
         '--no-render',
         '-sim_steps', str(sim_steps),
         '-simulations', str(simulations),
-        '-eval_path',eval_path
+        '-eval_path',eval_path,
+        '-agents', str(agents)
     ])
 
 if __name__ == '__main__':

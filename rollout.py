@@ -270,6 +270,8 @@ def create_parser(parser_creator=None):
                         default=1024, help="Seed number.\n"),
     parser.add_argument("-simulations", dest="simulations", type=int,
                         default=10, help="Number of simulation examples.\n"),
+    parser.add_argument("-agents", dest="agents", type=int,
+                        default=2, help="Number of agents.\n"),
     parser.add_argument(
         "-eval_path", type=str, help="Code name.")
 
@@ -516,7 +518,8 @@ if __name__ == "__main__":
         forced_toc_pun=args.pun,
         sim_example=True,
         seed=args.seed,
-        data_path=path))
+        data_path=path,
+        agents=args.agents))
 
     # Old option: monitor, use video-dir instead.
     if args.monitor:
