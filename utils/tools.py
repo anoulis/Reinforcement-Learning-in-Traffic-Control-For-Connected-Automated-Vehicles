@@ -15,6 +15,10 @@ def main():
     main_path.append('final_models/sims/dnq_sample3015.zip_20200613-143151/')
     main_path.append('final_models/sims/dnq_dc_seed_30.zip_20200624-101517/')
     main_path.append('final_models/sims/test4.zip_20200717-114640/')
+    main_path.append(
+        'final_models/sims/DQN__2020-08-26_22-11-43__20200827-094847/')
+    main_path.append(
+        'final_models/sims/DQN__2020-08-26_20-57-26__20200827-113306/')
     # main_path.append('final_models/sims/bad_test_2.zip_20200727-100032/')
 
 
