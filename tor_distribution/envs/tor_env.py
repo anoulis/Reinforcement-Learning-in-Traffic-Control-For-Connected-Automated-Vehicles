@@ -27,7 +27,7 @@ from datetime import datetime
 class TorEnv(MultiAgentEnv):
     metadata = {'render.modes': ['human']}
 
-    def __init__(self, cfg_file=str("scenario/sumo.cfg"), net_file="scenario/UC5_1.net.xml", route_file='scenario/routes_trafficMix_0_trafficDemand_1_driverBehaviour_OS_seed_0.xml', vTypes_files=['scenario/vTypesCAVToC_OS.add.xml', 'scenario/vTypesCVToC_OS.add.xml', 'scenario/vTypesLV_OS.add.xml'], delay=0, out_csv_name=None, sim_steps=200, seed=1024, trains=2, plot=False, use_gui=True, sim_example=False,   forced_toc_pun=1.0, data_path="/home/anoulis/workspace/tor-distribution/outputs/trainings/"):
+    def __init__(self, cfg_file=str("scenario/sumo.cfg"), net_file="scenario/UC5_1.net.xml", route_file='scenario/routes_trafficMix_0_trafficDemand_1_driverBehaviour_OS_seed_0.xml', vTypes_files=['scenario/vTypesCAVToC_OS.add.xml', 'scenario/vTypesCVToC_OS.add.xml', 'scenario/vTypesLV_OS.add.xml'], delay=0, out_csv_name=None, sim_steps=200, seed=1024, trains=2, plot=False, use_gui=True, sim_example=False,   forced_toc_pun=1.0, data_path="/home/anoulis/workspace/tor-distribution/outputs/trainings/", agents=2):
         """
         initialization of the environment
 
@@ -95,7 +95,7 @@ class TorEnv(MultiAgentEnv):
         self.data_path = data_path
         self.sim_example = sim_example
         self.cells_number = 14
-        self.agents = 2
+        self.agents = agents
         self.cellsPerAgent =int((self.cells_number-2)/self.agents)
 
         seperator = ', '
@@ -108,11 +108,11 @@ class TorEnv(MultiAgentEnv):
 
         self.observation_space = spaces.Box(-100000, 100000,
                                             shape=(4, int(self.cellsPerAgent+2)), dtype=np.int)
-        self.action_space = spaces.Discrete(self.cellsPerAgent)
+        self.action_space = spaces.Discrete(self.cellsPerAgent+1)
 
         self.reward_range = (-float('inf'), float('inf'))
         self.run = 0
-        self.myManager = TraciManager(self.cells_number+1)
+        self.myManager = TraciManager(self.cells_number,self.agents)
         self.plot = False
         self.seed = seed
         traci.close()
@@ -126,8 +126,10 @@ class TorEnv(MultiAgentEnv):
         if self.run != 0:
             traci.close()
             # self.save_csv(self.data_path, self.run)
-        self.rsu_ids = [0, 1]
-        self.rsuActivatedCells = [0, 0]
+        # self.rsu_ids = [0, 1]
+        self.rsu_ids = list(range(self.agents))
+        # self.rsuActivatedCells = [0, 0]
+        self.rsuActivatedCells = [0] * self.agents
         self.run += 1
         self.metrics = []
         self.x = []
@@ -158,7 +160,7 @@ class TorEnv(MultiAgentEnv):
                          "-a", addFilesString]
 
         traci.start([self._sumo_binary] + sumo_args)
-        self.myManager = TraciManager(self.cells_number)
+        self.myManager = TraciManager(self.cells_number,self.agents)
         self.myManager.do_steps(self.delay)
 
         return self._compute_observations()
@@ -207,21 +209,21 @@ class TorEnv(MultiAgentEnv):
             templ1 = []
             templ2 = []
             templ3 = []
-            templ1 = av[i:int(self.cellsPerAgent+i)]
-            templ1.append(av[self.cells_number-1])
-            templ1.append(av[self.cells_number-2])
+            templ1 = av[i:int(self.cellsPerAgent+i+2)]
+            # templ1.append(av[self.cells_number-1])
+            # templ1.append(av[self.cells_number-2])
 
-            templ2 = speeds[i:int(self.cellsPerAgent+i)]
-            templ2.append(speeds[self.cells_number-1])            
-            templ2.append(speeds[self.cells_number-2])
+            templ2 = speeds[i:int(self.cellsPerAgent+i+2)]
+            # templ2.append(speeds[self.cells_number-1])            
+            # templ2.append(speeds[self.cells_number-2])
 
-            templ3 = pend[i:int(self.cellsPerAgent+i)]
-            templ3.append(pend[self.cells_number-1])
-            templ3.append(pend[self.cells_number-2])
+            templ3 = pend[i:int(self.cellsPerAgent+i+2)]
+            # templ3.append(pend[self.cells_number-1])
+            # templ3.append(pend[self.cells_number-2])
 
-            templ4 = self.myManager.ToC_Per_Cell[i:int(self.cellsPerAgent+i)]
-            templ4.append(self.myManager.ToC_Per_Cell[self.cells_number-1])
-            templ4.append(self.myManager.ToC_Per_Cell[self.cells_number-2])
+            templ4 = self.myManager.ToC_Per_Cell[i:int(self.cellsPerAgent+i+2)]
+            # templ4.append(self.myManager.ToC_Per_Cell[self.cells_number-1])
+            # templ4.append(self.myManager.ToC_Per_Cell[self.cells_number-2])
 
             observations[rsu] = np.array(
                 [templ1, templ2, templ3, templ4], dtype=np.int)
@@ -297,7 +299,7 @@ class TorEnv(MultiAgentEnv):
         # self.myManager.activatedCell=0
         i = 0
         for rsu, action in actions.items():
-            if(action == 6):
+            if(action == self.cellsPerAgent):
                 self.rsuActivatedCells[rsu] = -1
                 self.myManager.activatedCell[rsu] = -1
             else:
@@ -333,20 +335,77 @@ class TorEnv(MultiAgentEnv):
         # Approach 3
         # reward = self.reward_based_on_Distribution_Speed(action, observation)
         # reward = self.reward_based_on_DS_old(action, observation)
-        reward = self.reward_based_on_DS(action, observation)
+        # reward = self.reward_based_on_DS_MA(action, observation)
+        reward = self.reward_based_cells_MA(action, observation)
 
         # bad example
         # reward = self.reward_Bad_Example(action, observation)
         return reward
+
+    def reward_based_cells_MA(self, action, observation):
+        rewards = {}
+        wt = 0
+        lanes = self.myManager.getAreaLanes()
+        for i in range(2):
+            wt += self.myManager.getLaneWait(lanes[i])
+
+        i = 0
+        for rsu in self.rsu_ids:
+            reward = 0
+            pun = 0
+            wtpun = 0
+            action = self.rsuActivatedCells[rsu]
+
+            if(action != -1):
+                if(observation[rsu][1][action-1-i] < 15 and observation[rsu][1][action-1-i] > 0):
+                    wtpun += 1
+                if(sum(self.myManager.ToC_Per_Cell) == 0):
+                    ratio = 1
+                else:
+                    ratio = self.myManager.ToC_Per_Cell[action-1] / sum(self.myManager.ToC_Per_Cell)
+            
+            if(rsu == self.agents-1):
+                pun = observation[rsu][0][-1] +  observation[rsu][0][-2]
+
+            if(wt == 0):
+                if(pun == 0):
+                    if(wtpun == 0):
+                        if(action != -1):
+                            # if(ratio <= self.myManager.getCellInfluence(action) and ratio > 0):
+                            if(action == 12 or action == 11):
+                                reward = self.myManager.getCellInfluence(action)
+                            else:
+                                if(self.myManager.ToC_Per_Cell[action-1] <= self.myManager.ToC_Per_Cell[action]):
+                                    reward = self.myManager.getCellInfluence(action)
+                                else:
+                                    reward = -1
+                        else:
+                            if(rsu == self.agents-1):
+                                reward = -1
+                            else:
+                                reward = self.myManager.getCellInfluence((rsu+2)*2)
+                    else:
+                        reward = -1
+                else:
+                    self.forcedT += len(self.myManager.missed)
+                    self.myManager.sendForced()
+                    reward = -10
+            else:
+                reward = -10000
+            i += self.cellsPerAgent
+            rewards[rsu] = float(reward)
+        
+        return rewards
     
 
-    def reward_based_on_DS(self, action, observation):
+    def reward_based_on_DS_MA(self, action, observation):
         """
-        Last reward function.
+        Milti Agent reward function.
         Default mode for 14 cells.
         WT related Punishment when the speed of activated cell in under limit.
         WT related Punishment when the speed sum of activated cell and next cell in under limit.
-        Punishment when there AV vehs in last 2 cells -> enables forced ToCs.
+        Punishment when there AV vehs in last 2 cells -> enables forced ToCs only for second Agent.
+        Punishment when we choose cell but without sending ToCs.
         Appearence of WT -> huge negative rewards.
 
         """
@@ -355,7 +414,7 @@ class TorEnv(MultiAgentEnv):
         lanes = self.myManager.getAreaLanes()
         for i in range(2):
             wt += self.myManager.getLaneWait(lanes[i])
-        
+
         i=0
         for rsu in self.rsu_ids:
             reward = 0
@@ -368,58 +427,35 @@ class TorEnv(MultiAgentEnv):
                     wtpun += 1
                 if((observation[rsu][1][action-1-i]+observation[rsu][1][action-1+2-i]) < 40 and observation[rsu][1][action-1-i] > 0 and observation[rsu][1][action-1+2-i] > 0):
                     wtpun += 1
-        
-            pun = observation[rsu][0][self.cellsPerAgent] + \
-                observation[rsu][0][self.cellsPerAgent+1]
+            if(rsu!=0):
+                pun = observation[rsu][0][-1] + observation[rsu][0][-2]
 
             if(wt == 0):
                 if(pun == 0):
-                    if(wtpun==0):
+                    if(wtpun == 0):
                         # self.acted_times += 1
                         if(action != -1):
-                            if(observation[rsu][2][action-1-i] == 0 or self.myManager.getDecidedToCs()[rsu] == 0):
+                            if(observation[rsu][2][action-1-i] == 0 or self.myManager.getDecidedToCs() == 0):
                                 reward = 0
                             else:
                                 reward = self.myManager.getCellInfluence(action)
                         else:
-                            if(rsu==0):
-                                reward = 1
-                            else:
+                            if(rsu == self.agents-1):
                                 reward = -1
+                            else:
+                                reward = self.myManager.getCellInfluence((rsu+2)*2)
                     else:
                         reward = -1
                 else:
                     self.forcedT += len(self.myManager.missed)
                     self.myManager.sendForced()
-                    reward = -10                 
+                    reward = -10
             else:
                 reward = -10000
             i += self.cellsPerAgent
             rewards[rsu] = float(reward)
 
         return rewards
-
-    def reward_Bad_Example(self, action, observation):
-        """ Bad model """
-        reward = 0
-
-        # punishment for the sum of forced ToCs
-        reward = observation[0][action-1] + observation[2][action-1]
-
-        pun = observation[0][self.cells_number-1] + \
-            observation[0][self.cells_number-2]
-        if(pun == 0):
-            ### first try
-            # reward = reward
-            ### second try
-            reward = reward*self.myManager.getCellInfluence(action)
-        else:
-            self.forcedT += len(self.myManager.missed)
-            self.myManager.sendForced()
-            reward = -100
-
-
-        return reward
 
     def _sumo_step(self):
         """
@@ -482,6 +518,91 @@ class TorEnv(MultiAgentEnv):
 
 
     ##############################################
+
+    # First tries with 2 Multi Agents 
+
+    # def reward_based_on_DS(self, action, observation):
+    # """
+    # Last reward function.
+    # Default mode for 14 cells.
+    # WT related Punishment when the speed of activated cell in under limit.
+    # WT related Punishment when the speed sum of activated cell and next cell in under limit.
+    # Punishment when there AV vehs in last 2 cells -> enables forced ToCs.
+    # Appearence of WT -> huge negative rewards.
+
+    # """
+    # rewards = {}
+    # wt = 0
+    # lanes = self.myManager.getAreaLanes()
+    # for i in range(2):
+    #     wt += self.myManager.getLaneWait(lanes[i])
+
+    # i = 0
+    # for rsu in self.rsu_ids:
+    #     reward = 0
+    #     pun = 0
+    #     wtpun = 0
+    #     action = self.rsuActivatedCells[rsu]
+
+    #     if(action != -1):
+    #         if(observation[rsu][1][action-1-i] < 15 and observation[rsu][1][action-1-i] > 0 and observation[rsu][1][action-1+2-i] > 0):
+    #             wtpun += 1
+    #         if((observation[rsu][1][action-1-i]+observation[rsu][1][action-1+2-i]) < 40 and observation[rsu][1][action-1-i] > 0 and observation[rsu][1][action-1+2-i] > 0):
+    #             wtpun += 1
+
+    #     pun = observation[rsu][0][self.cellsPerAgent] + \
+    #         observation[rsu][0][self.cellsPerAgent+1]
+
+    #     if(wt == 0):
+    #         if(pun == 0):
+    #             if(wtpun == 0):
+    #                 # self.acted_times += 1
+    #                 if(action != -1):
+    #                     if(observation[rsu][2][action-1-i] == 0 or self.myManager.getDecidedToCs()[rsu] == 0):
+    #                         reward = 0
+    #                     else:
+    #                         reward = self.myManager.getCellInfluence(
+    #                             action)
+    #                 else:
+    #                     if(rsu == 0):
+    #                         reward = 1
+    #                     else:
+    #                         reward = -1
+    #             else:
+    #                 reward = -1
+    #         else:
+    #             self.forcedT += len(self.myManager.missed)
+    #             self.myManager.sendForced()
+    #             reward = -10
+    #     else:
+    #         reward = -10000
+    #     i += self.cellsPerAgent
+    #     rewards[rsu] = float(reward)
+
+    # return rewards
+
+
+
+    # def reward_Bad_Example(self, action, observation):
+    # """ Bad model """
+    # reward = 0
+
+    # # punishment for the sum of forced ToCs
+    # reward = observation[0][action-1] + observation[2][action-1]
+
+    # pun = observation[0][self.cells_number-1] + \
+    #     observation[0][self.cells_number-2]
+    # if(pun == 0):
+    #     ### first try
+    #     # reward = reward
+    #     ### second try
+    #     reward = reward*self.myManager.getCellInfluence(action)
+    # else:
+    #     self.forcedT += len(self.myManager.missed)
+    #     self.myManager.sendForced()
+    #     reward = -100
+
+    # return reward
     
     # Previous reward functions for Approach 3
 

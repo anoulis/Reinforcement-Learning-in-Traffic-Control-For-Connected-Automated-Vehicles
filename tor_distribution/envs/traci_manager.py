@@ -63,7 +63,7 @@ class Vehicle:
 # The old runner code
 class TraciManager():
 
-    def __init__(self,cells_number):
+    def __init__(self,cells_number,agents):
         self.MAX_OCCUPANCY = 10.
 
         self.downwardEdgeID = "e0"
@@ -87,8 +87,8 @@ class TraciManager():
         self.openPlatoons = [None for _ in self.loops]
         # Last step detected vehicles (to avoid duplicate additions to platoons)
         self.lastStepDetections = [set() for _ in self.loops]
-
-        self.activatedCell = self.zerolistmaker(2)
+        self.agents = agents
+        self.activatedCell = self.zerolistmaker(agents)
 
         self.latePunishment = 0
 
@@ -109,7 +109,7 @@ class TraciManager():
 
         # Varius useful values
         self.step = 0
-        self.sendToCs = self.zerolistmaker(2)
+        self.sendToCs = 0
         self.totalSendToCs = 0
         self.cells_number = cells_number
         self.ToC_Per_Cell = self.zerolistmaker(self.cells_number)
@@ -455,7 +455,7 @@ class TraciManager():
         """ Main execution function of the sumo simulation"""
 
         self.step +=1
-        self.sendToCs = self.zerolistmaker(2)
+        self.sendToCs =0
         self.totalSendToCs = 0
         # self.ToCs = 0
         traci.simulationStep()
@@ -537,11 +537,12 @@ class TraciManager():
                 if (veh.cell == self.activatedCell[0] or veh.cell == self.activatedCell[1]):
                     # self.calculate_early_punishment(veh.cell)
                     self.requestToC(veh.ID, veh.cell, veh.pos, ToC_lead_times[veh.automationType])
-                    self.totalSendToCs =+1
-                    if(veh.cell >6):
-                        self.sendToCs[1] = 1
-                    else:
-                        self.sendToCs[0] = 1
+                    self.totalSendToCs +=1
+                    # veh.cell % int(self.cells_numbe-2/self.agents)
+                    # if(veh.cell >6):
+                    #     self.sendToCs[1] = 1
+                    # else:
+                    #     self.sendToCs[0] = 1
                     self.pendingToCVehs.append(veh)
                     self.CAV_CV.remove(veh)
 
