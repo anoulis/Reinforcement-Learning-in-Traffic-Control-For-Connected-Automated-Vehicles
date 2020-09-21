@@ -60,7 +60,7 @@ class Vehicle:
 
 
 
-# The old runner code
+# Contains parts of the TrainsAID runner code
 class TraciManager():
 
     def __init__(self,cells_number):
@@ -292,7 +292,6 @@ class TraciManager():
             elif cell==8 or cell==7:
                 return 0.4
             else:
-                # return o.5
                 return 0
         else:
             if cell == 2 or cell == 1:
@@ -367,12 +366,22 @@ class TraciManager():
         limit = 2000
         for veh in self.missed:
             if(veh not in self.pendingToCVehs):
-                if(traci.vehicle.getDistance(veh.ID) > limit and (veh.cell == 13 or veh.cell == 14)):
-                    self.requestToC(veh.ID, veh.cell, veh.pos,
-                                    ToC_lead_times[veh.automationType])
-                    self.pendingToCVehs.append(veh)
-                    self.CAV_CV.remove(veh)
-                    self.missed.remove(veh)
+                if(self.cells_number == 10):
+                    if(traci.vehicle.getDistance(veh.ID) > limit and (veh.cell == 9 or veh.cell == 10)):
+                        self.requestToC(veh.ID, veh.cell, veh.pos,
+                                        ToC_lead_times[veh.automationType])
+                        self.pendingToCVehs.append(veh)
+                        self.CAV_CV.remove(veh)
+                        self.missed.remove(veh)
+                if(self.cells_number == 14):
+                    if(traci.vehicle.getDistance(veh.ID) > limit and (veh.cell == 13 or veh.cell == 14)):
+                        self.requestToC(veh.ID, veh.cell, veh.pos,
+                                        ToC_lead_times[veh.automationType])
+                        self.pendingToCVehs.append(veh)
+                        self.CAV_CV.remove(veh)
+                        self.missed.remove(veh)
+                
+
 
 
     def get_forced_ToCs(self):
@@ -523,9 +532,14 @@ class TraciManager():
 
         for veh in self.CAV_CV:
             veh.updateCell(self.getCell(veh.pos, veh.lane))
-            if(veh.cell == 13 or veh.cell==14):
-                if( veh not in self.missed):
-                    self.missed.append(veh)
+            if(self.cells_number==10):
+                if(veh.cell == 10 or veh.cell == 9):
+                    if(veh not in self.missed):
+                        self.missed.append(veh)
+            if(self.cells_number==14):
+                if(veh.cell == 13 or veh.cell == 14):
+                    if(veh not in self.missed):
+                        self.missed.append(veh)
             veh.updateWT(traci.vehicle.getAccumulatedWaitingTime(veh.ID))
             if(veh not in self.pendingToCVehs):
                 if(self.activatedCell!=0):

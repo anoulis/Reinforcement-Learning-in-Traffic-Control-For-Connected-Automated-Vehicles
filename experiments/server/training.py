@@ -74,6 +74,7 @@ def main():
     parser.add_argument("-plot", action="store_true", default=True, help="Plot graphs.\n"),
     parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=48335 , help="Max simulation steps.\n"),
     parser.add_argument("-trains", dest="trains", type =int, default=30, help="Max trainings.\n"),
+    parser.add_argument("-delay", dest="delay", type=int, default=0, help="Simulation Delay.\n"),
     parser.add_argument("-pun", dest="pun", type =float, default=1.0, help="Forced ToC messages punishment factor.\n"),
     parser.add_argument("-zip", dest="zip", type=str,
                         default='dqn_sample.zip',
@@ -92,7 +93,7 @@ def main():
 
     try:
         if not os.path.exists(path):
-            os.mkdir(path)
+            os.makedirs(path)
     except OSError:
         print ("Creation of the directory %s failed" % path)
     else:
@@ -105,8 +106,6 @@ def main():
     f.close()   
 
 
-    delay = 500
-
     env = gym.make('tor_distribution:tor-v0',
                     cfg_file=args.cfg,
                     net_file=args.network,
@@ -116,20 +115,14 @@ def main():
                     sim_steps=args.sim_steps,
                     trains = args.trains,
                     plot = args.plot,
-                    delay=delay,
+                    delay=args.delay,
                     forced_toc_pun=args.pun,
                     data_path = path)
 
-    # print(env._max_episode_steps)
-    # check_env(env)
-    # env = DummyVecEnv(env1)
-    # env = DummyVecEnv([lambda: env1])
-    # It will check your custom environment and output additional warnings if needed
-    # check_env(env)
-
     # initialization of the DQN training model
-
-    timesteps = int(args.trains*(args.sim_steps-delay))
+    
+    # timesteps for the training
+    timesteps = int(args.trains*(args.sim_steps-args.delay))
     model = DQN(
         env=env,
         policy=LnMlpPolicy,
@@ -146,46 +139,28 @@ def main():
         target_network_update_freq=100,
         # param_noise=True,
         # double_q = False,
-        verbose = 2,
-        tensorboard_log="./../../../../media/ml_share/noul_ar/dqn_tensorboard/"
-        # tensorboard_log="./dqn_tensorboard/"
+        verbose=2,
+        tensorboard_log="./dqn_tensorboard/"
+        # that was the location for the custom server location
+        # tensorboard_log="./../../../../media/ml_share/noul_ar/dqn_tensorboard/"
     )
-    # model = A2C(MlpPolicy, env,
-    #             gamma=0.99,
-    #             n_steps=10,
-    #             learning_rate=1e-3, 
-    #             verbose=2,
-    #             tensorboard_log="./a2c_tensorboard/")
 
     #execute the training
     print()
 
-    # Use deterministic actions for evaluation
-    eval_callback = EvalCallback(env, best_model_save_path='./logs/',
-                                 log_path='./logs/', eval_freq=4*(args.sim_steps-delay),
-                                deterministic=True, render=False)
+    # intialization of the checkpoint, for saving models for every X timesteps
+    checkpoint_callback = CheckpointCallback(save_freq=(args.sim_steps-args.delay), save_path=path + '/logs/',
+                                             name_prefix=args.zip[:-4] + '_rl_model')
 
-    checkpoint_callback = CheckpointCallback(save_freq=(args.sim_steps-delay), save_path='./logs/',
-                                             name_prefix='rl_model')
-
-    # Stop training when the model reaches the reward threshold
-    # mythreshold = 3500
-    # callback_on_best = StopTrainingOnRewardThreshold(reward_threshold=mythreshold, verbose=1)
-    # eval_callback = EvalCallback(env, callback_on_new_best=callback_on_best, verbose=1)
     print("Start the training for", args.trains,
-          "episodes and simulation steps " + str(args.sim_steps-delay) + "\n")
-    # print("Start the training for threshold ", mythreshold,
-    #       "episodes and simulation steps " + str(args.sim_steps) + "\n")
+          "episodes and simulation steps " + str(args.sim_steps-args.delay) + "\n")
 
-    # model.learn(total_timesteps=(args.trains*args.sim_steps))
-    # model.learn(int(1e10), callback = eval_callback)
-    # args.trains*(args.sim_steps-delay)
-    model.learn(timesteps,
-                callback=checkpoint_callback)
+    model.learn(timesteps, callback=checkpoint_callback)
 
 
 
     # save, delete and restore model
+    print()
     print("Save the model " +str(args.zip)+ " \n")
     model.save(args.zip)
 

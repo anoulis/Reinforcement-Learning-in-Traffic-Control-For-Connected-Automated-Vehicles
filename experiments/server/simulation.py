@@ -64,14 +64,12 @@ def main():
     parser.add_argument("-vTypes", dest="vTypes", type=str, nargs='*',
                         default=['scenario/vTypesCAVToC_OS.add.xml','scenario/vTypesCVToC_OS.add.xml','scenario/vTypesLV_OS.add.xml'],
                         help="Route definition xml file.\n")
-    parser.add_argument("-gui", action="store_true", default=True, help="Run with visualization on SUMO.\n"),
+    parser.add_argument("-gui", action="store_true", default=False, help="Run with visualization on SUMO.\n"),
     parser.add_argument("-plot", action="store_true", default=True, help="Plot graphs.\n"),
     parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=48335, help="Max simulation steps.\n"),
-    parser.add_argument("-trains", dest="trains", type =int, default=30, help="Max trainings.\n"),
-    parser.add_argument("-seed", dest="seed", type=int,
-                        default=1024, help="Seed number.\n"),
-    parser.add_argument("-simulations", dest="simulations", type=int,
-                        default=10, help="Number of simulation examples.\n"),
+    parser.add_argument("-delay", dest="delay", type=int, default=0, help="Simulation Delay.\n"),
+    parser.add_argument("-seed", dest="seed", type=int,default=1024, help="Seed number.\n"),
+    parser.add_argument("-simulations", dest="simulations", type=int, default=10, help="Number of simulation examples.\n"),
     parser.add_argument("-pun", dest="pun", type =float, default=1.0, help="Forced ToC messages punishment factor.\n"),
     parser.add_argument("-zip", dest="zip", type=str,
                         default='dqn_sample.zip',
@@ -89,13 +87,11 @@ def main():
 
     try:
         if not os.path.exists(path):
-            os.mkdir(path)
+            os.makedirs(path)
     except OSError:
         print ("Creation of the directory %s failed" % path)
     else:
         print ("Successfully created the directory %s" % path)
-
-    delay = 500
 
     env = gym.make('tor_distribution:tor-v0',
                     cfg_file=args.cfg,
@@ -104,9 +100,8 @@ def main():
                     vTypes_files=args.vTypes,
                     use_gui=args.gui,
                     sim_steps = args.sim_steps,
-                    trains = args.trains,
                     plot = args.plot,
-                    delay=delay,
+                    delay=args.delay,
                     forced_toc_pun=args.pun,
                     sim_example = True,
                     seed = args.seed,
@@ -123,6 +118,8 @@ def main():
     # model = A2C.load(args.zip)
 
     for run in range(args.simulations):
+        if(args.gui):
+            env.render()
         observation = env.reset()
         print()
         print("Start the simulation "  + str(run+1) + " of " + str(args.simulations) + "\n")
