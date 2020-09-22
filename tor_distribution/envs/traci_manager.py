@@ -444,12 +444,12 @@ class TraciManager():
         # print("subscribeState() for vehicle '%s'"%vehID)
         traci.vehicle.subscribe(vehID, [tc.VAR_LANE_ID, tc.VAR_LANEPOSITION, tc.VAR_SPEED])
 
-    def do_steps(self,steps):
-        if(steps>0):
-            self.activatedCell = self.zerolistmaker(2)
-            for i in range(steps):
-                i +=1
-                self.call_runner()
+    # def do_steps(self,steps):
+    #     if(steps>0):
+    #         self.activatedCell = self.zerolistmaker(2)
+    #         for i in range(steps):
+    #             i +=1
+    #             self.call_runner()
 
     def call_runner(self):
         """ Main execution function of the sumo simulation"""
@@ -534,7 +534,7 @@ class TraciManager():
             if(veh not in self.pendingToCVehs):
                 # if(self.activatedCell!=0):
                 # print()
-                if (veh.cell == self.activatedCell[0] or veh.cell == self.activatedCell[1]):
+                if (veh.cell in self.activatedCell):
                     # self.calculate_early_punishment(veh.cell)
                     self.requestToC(veh.ID, veh.cell, veh.pos, ToC_lead_times[veh.automationType])
                     self.totalSendToCs +=1

@@ -47,8 +47,8 @@ class TorEnv(MultiAgentEnv):
         """
 
 
-        self.rsu_ids = [0,1]
-        self.rsuActivatedCells = [0, 0]
+        # self.rsu_ids = [0,1]
+        # self.rsuActivatedCells = [0, 0]
 
         self._cfg = cfg_file
         self._network = net_file
@@ -138,7 +138,7 @@ class TorEnv(MultiAgentEnv):
 
         traci.start([self._sumo_binary] + sumo_args)
         self.myManager = TraciManager(self.cells_number,self.agents)
-        self.myManager.do_steps(self.delay)
+        # self.myManager.do_steps(self.delay)
 
         return self._compute_observations()
 
@@ -272,11 +272,23 @@ class TorEnv(MultiAgentEnv):
         """
 
         # reward = self.reward_based_on_DS_MA(action, observation)
-        reward = self.reward_based_cells_MA(action, observation)
+        # reward = self.reward_based_cells_MA(action, observation)
+        reward = self.reward_based_cells_MA_TEST(action, observation)
+
 
         return reward
 
-    def reward_based_cells_MA(self, action, observation):
+
+    def reward_based_cells_MA_TEST(self, action, observation):
+        """
+        A reward focusing on distributin the ToRs based on cells influece.
+        The last agent is always sending ToRs to CAVs that can see.
+        Default mode for 14 cells.
+        Related Punishment when the speed of activated cell in under limit.
+        Punishment when there AV vehs in last 2 cells -> enables forced ToCs only for second Agent.
+        Punishment when we choose cell but without sending ToCs.
+        Appearence of WT -> huge negative rewards.
+        """
         rewards = {}
         wt = 0
         lanes = self.myManager.getAreaLanes()
@@ -305,20 +317,28 @@ class TorEnv(MultiAgentEnv):
                 if(pun == 0):
                     if(wtpun == 0):
                         if(action != -1):
-                            # if(ratio <= self.myManager.getCellInfluence(action) and ratio > 0):
-                            # if(action == 12 or action == 11):
-                            #     reward = self.myManager.getCellInfluence(action)
-                            # else:
-                            if(self.myManager.ToC_Per_Cell[action-2] < self.myManager.ToC_Per_Cell[action-1]):
-                                # if(rsu == self.agents-1):
-                                #     print(self.myManager.ToC_Per_Cell[action-1])
-                                #     print(self.myManager.ToC_Per_Cell[action])
-                                reward = self.myManager.getCellInfluence(action)
+                            if(rsu == self.agents-1):
+                                Sum = np.sum(observation[rsu][0])
+                                if( Sum == 0):
+                                    reward = 1
+                                else:
+                                    reward = -int(Sum)
                             else:
-                                reward = -1
+                                # if(ratio <= self.myManager.getCellInfluence(action) and ratio > 0):
+                                if(action == 2 or action == 1):
+                                    # reward = self.myManager.getCellInfluence(action)
+                                    reward = -1
+                                else:
+                                    if(self.myManager.ToC_Per_Cell[action-3] < self.myManager.ToC_Per_Cell[action-1]):
+                                        # if(rsu == self.agents-1):
+                                        #     print(self.myManager.ToC_Per_Cell[action-1])
+                                        #     print(self.myManager.ToC_Per_Cell[action])
+                                        reward = self.myManager.getCellInfluence(action)
+                                    else:
+                                        reward = -1
                         else:
                             if(rsu == self.agents-1):
-                                reward = -1
+                                reward = -10
                             else:
                                 reward = self.myManager.getCellInfluence((rsu+2)*2)
                     else:
@@ -326,7 +346,7 @@ class TorEnv(MultiAgentEnv):
                 else:
                     self.forcedT += len(self.myManager.missed)
                     self.myManager.sendForced()
-                    reward = -10
+                    reward = -100
             else:
                 reward = -10000
             i += self.cellsPerAgent
@@ -334,11 +354,81 @@ class TorEnv(MultiAgentEnv):
 
         
         return rewards
+
+
+    def reward_based_cells_MA(self, action, observation):
+        """
+        A reward focusing on distributin the ToRs based on cells influece.
+        Default mode for 14 cells.
+        Related Punishment when the speed of activated cell in under limit.
+        Punishment when there AV vehs in last 2 cells -> enables forced ToCs only for second Agent.
+        Punishment when we choose cell but without sending ToCs.
+        Appearence of WT -> huge negative rewards.
+
+        """
+        rewards = {}
+        wt = 0
+        lanes = self.myManager.getAreaLanes()
+        for i in range(2):
+            wt += self.myManager.getLaneWait(lanes[i])
+
+            i = 0
+            for rsu in self.rsu_ids:
+                reward = 0
+                pun = 0
+                wtpun = 0
+                action = self.rsuActivatedCells[rsu]
+
+                if(action != -1):
+                    if(observation[rsu][1][action-1-i] < 15 and observation[rsu][1][action-1-i] > 0):
+                        wtpun += 1
+                    if(sum(self.myManager.ToC_Per_Cell) == 0):
+                        ratio = 1
+                    else:
+                        ratio = self.myManager.ToC_Per_Cell[action -
+                                                            1] / sum(self.myManager.ToC_Per_Cell)
+
+                if(rsu == self.agents-1):
+                    pun = observation[rsu][0][-1] + observation[rsu][0][-2]
+
+                if(wt == 0):
+                    if(pun == 0):
+                        if(wtpun == 0):
+                            if(action != -1):
+                                # if(ratio <= self.myManager.getCellInfluence(action) and ratio > 0):
+                                if(action == 12 or action == 11):
+                                    reward = self.myManager.getCellInfluence(
+                                        action)
+                                else:
+                                    if(self.myManager.ToC_Per_Cell[action-1] <= self.myManager.ToC_Per_Cell[action]):
+                                        reward = self.myManager.getCellInfluence(
+                                            action)
+                                    else:
+                                        reward = -1
+                            else:
+                                if(rsu == self.agents-1):
+                                    reward = -1
+                                else:
+                                    reward = self.myManager.getCellInfluence(
+                                        (rsu+2)*2)
+                        else:
+                            reward = -1
+                    else:
+                        self.forcedT += len(self.myManager.missed)
+                        self.myManager.sendForced()
+                        reward = -10
+                else:
+                    reward = -10000
+                i += self.cellsPerAgent
+                rewards[rsu] = float(reward)
+
+        return rewards
+
     
 
     def reward_based_on_DS_MA(self, action, observation):
         """
-        Milti Agent reward function.
+        Multi Agent reward function based on the last Single Agent one.
         Default mode for 14 cells.
         WT related Punishment when the speed of activated cell in under limit.
         WT related Punishment when the speed sum of activated cell and next cell in under limit.

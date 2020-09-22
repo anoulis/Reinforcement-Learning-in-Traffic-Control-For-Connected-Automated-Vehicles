@@ -84,8 +84,6 @@ def main():
     parser.add_argument("-vTypes", dest="vTypes", type=str, nargs='*',
                         default=['scenario/vTypesCAVToC_OS.add.xml','scenario/vTypesCVToC_OS.add.xml','scenario/vTypesLV_OS.add.xml'],
                         help="Route definition xml file.\n")
-    parser.add_argument("-gui", action="store_true", default=True, help="Run with visualization on SUMO.\n"),
-    parser.add_argument("-plot", action="store_true", default=True, help="Plot graphs.\n"),
     parser.add_argument("-sim_steps", dest="sim_steps", type =int, default=48335 , help="Max simulation steps.\n"),
     parser.add_argument("-trains", dest="trains", type =int, default=30, help="Max trainings.\n"),
     parser.add_argument("-pun", dest="pun", type =float, default=1.0, help="Forced ToC messages punishment factor.\n"),
@@ -98,8 +96,6 @@ def main():
     parser.add_argument("-simulations", dest="simulations", type=int,
                         default=10, help="Number of simulation examples.\n"),
 
-
-    # parser.add_argument("-runs", dest="runs", type=int, default=1, help="Number of runs.\n")
 
     args = parser.parse_args()
     experiment_time = str(datetime.now()).split('.')[0]
@@ -122,10 +118,10 @@ def main():
                             net_file=args.network,
                             route_file=args.route,
                             vTypes_files=args.vTypes,
-                            use_gui=args.gui,
+                            use_gui=False,
                             sim_steps=args.sim_steps,
                             trains = args.trains,
-                            plot = args.plot,
+                            plot = False,
                             delay=delay,
                             agents=agents))
             
@@ -178,11 +174,11 @@ def do_training(envName, sim_steps, trains, agents):
 
         # Mutli Agent Configs
         "multiagent": {
-            "model": {
-                "custom_model": "custom_loss",
-            #     "use_lstm": True,
-            #     "lstm_use_prev_action_reward": True,
-            },
+            # "model": {
+            #     "custom_model": "custom_loss",
+            # #     "use_lstm": True,
+            # #     "lstm_use_prev_action_reward": True,
+            # },
             "policies": policies,
             "policy_mapping_fn": policy_mapping_fn,
             # "policies_to_train": policies_to_train
