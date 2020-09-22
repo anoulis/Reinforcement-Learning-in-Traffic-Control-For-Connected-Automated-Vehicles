@@ -23,7 +23,8 @@ test SUMO via ...
 
 ```
 conda env create -f environment.yml
-pip install -e .
+conda activate ma-tor
+pip install ray[rllib]
 ```
 
 ### Run the experiment

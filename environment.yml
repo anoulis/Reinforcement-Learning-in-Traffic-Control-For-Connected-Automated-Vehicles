@@ -1,4 +1,4 @@
-name: tor-ma
+name: ma-tor
 channels:
   - anaconda
   - defaults

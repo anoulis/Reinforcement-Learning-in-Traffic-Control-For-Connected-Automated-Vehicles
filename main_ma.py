@@ -55,8 +55,8 @@ from callbacks import MyCallbacks
 import tempfile
 from  ray.tune.logger import UnifiedLogger
 
-# DEFAULT_RESULTS_DIR = '/home/anoulis/workspace/tor-distribution/outputs/ray_results/'
-DEFAULT_RESULTS_DIR = '/media/ml_share/noul_ar/outputs/ray_results/'
+DEFAULT_RESULTS_DIR = os.getcwd() + '/outputs/ray_results/'
+# DEFAULT_RESULTS_DIR = '/media/ml_share/noul_ar/outputs/ray_results/'
 
 
 def main():
@@ -113,7 +113,7 @@ def main():
     # path = os.getcwd() + "/outputs/trainings/" + args.zip+"_"+datetime.now().strftime("%Y%m%d-%H%M%S")
 
     cells_number = 14
-    agents = 2
+    agents = 3
     cellsPerAgent = int((cells_number-2)/agents)
     if args.mode == 'train':
             # Register the model and environment
