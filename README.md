@@ -1,34 +1,30 @@
-# TOR-distribution
+# ToR-Distribution
 
-This project aims to train an agent with reinforcement learning to distribute take-over-requests (TOR) for automated connected vehicles.
+This project aims to distribute take-over-requests (ToR) for automated connected vehicles using reinforcement learning.
+It used single and multi agent approaches.
 
----
-## Installing TOR-distribution and SUMO
-1.) Download the code.
+This branch contains only the final results with some explanation.
 
-    git clone https://gitlab.dlr.de/ml-with-flow/tor-distribution
-    cd tor-distibution
+To test every approach checkout to the sutiable branch and follow the readme file.
 
-
-2.) Create an environment using https://www.anaconda.com/download
-
-3.) Install SUMO https://sumo.dlr.de/docs/Installing.html
-Note: Make sure to setup your SUMO_HOME variable.
-
-test SUMO via ...
-
-
-
-### Set up conda env
+For Single Agent approach:
+```
+git fetch
+git checkout SingleAgent
 
 ```
-conda env create -f environment.yml
-pip install -e .
+
+For Multi Agent approach:
+```
+git fetch
+git checkout MultiAgent
+
 ```
 
-### Run the experiment
+You can clone also every branch seperately by the following
 
 ```
-python experiments/simple.py
+git clone https://gitlab.dlr.de/ml-with-flow/tor-distribution.git -b SingleAgent
+git clone https://gitlab.dlr.de/ml-with-flow/tor-distribution.git -b MultiAgent
 
 ```
