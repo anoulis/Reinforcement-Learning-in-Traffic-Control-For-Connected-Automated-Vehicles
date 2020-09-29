@@ -1,0 +1,33 @@
+{
+  "buffer_size": 300000,
+  "callbacks": "<class 'callbacks.MyCallbacks'>",
+  "eager_tracing": true,
+  "exploration_config": {
+    "epsilon_timesteps": 145005.0,
+    "final_epsilon": 0.02,
+    "initial_epsilon": 1.0,
+    "type": "EpsilonGreedy"
+  },
+  "framework": "tfe",
+  "lr": 0.0005,
+  "multiagent": {
+    "policies": {
+      "dqn_policy": [
+        "<class 'ray.rllib.policy.tf_policy_template.DQNTFPolicy'>",
+        "Box(4, 6)",
+        "Discrete(5)",
+        {}
+      ],
+      "mydqn_policy": [
+        "<class 'ray.rllib.policy.tf_policy_template.DQNTFPolicy'>",
+        "Box(4, 6)",
+        "Discrete(5)",
+        {}
+      ]
+    },
+    "policy_mapping_fn": "<function policy_mapping_fn at 0x000002A3ABE73A68>"
+  },
+  "num_workers": 0,
+  "target_network_update_freq": 100,
+  "timesteps_per_iteration": 48335
+}

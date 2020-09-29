@@ -1,0 +1,12 @@
+cfg scenario/sumo.cfg
+network scenario/UC5_1.net.xml
+route scenario/routes_trafficMix_0_trafficDemand_1_driverBehaviour_OS_seed_0.xml
+vTypes ['scenario/vTypesCAVToC_OS.add.xml', 'scenario/vTypesCVToC_OS.add.xml', 'scenario/vTypesLV_OS.add.xml']
+gui True
+plot True
+sim_steps 48335
+trains 30
+seed 1024
+simulations 10
+pun 1.5
+zip dnq_sample3015.zip

@@ -3,7 +3,11 @@
 This project aims to distribute take-over-requests (ToR) for automated connected vehicles using reinforcement learning.
 It used single and multi agent approaches.
 
-This branch contains only the final results with some explanation.
+This branch contains only the final results (trained models, sim results, plot) with some explanation.
+
+The models order presentation is presented in ModelsOrder.png.
+
+The presentation.pdf contains all the overview of the project.
 
 To test every approach checkout to the sutiable branch and follow the readme file.
 
