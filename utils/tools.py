@@ -4,11 +4,14 @@ import pandas as pd
 import matplotlib
 import numpy as np
 import matplotlib.pyplot as pl
+import os
 
 
 def main():
     main_path = []
     outputs_path = 'outputs/simulations/'
+    if not os.path.exists(outputs_path+'comparisons'):
+        os.makedirs(outputs_path+'comparisons')
 
     # declare model's stored files
     main_path.append('outputs/simulations/runner/')
