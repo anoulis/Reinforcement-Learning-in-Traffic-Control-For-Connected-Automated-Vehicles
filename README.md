@@ -4,9 +4,9 @@ This project aims to train multi agents with reinforcement learning to distribut
 
 ---
 ## Installation Requirements
-1.) Download the code of the SingleAgent branch
+1.) Download the code of the MultiAgent branch
 
-    git clone https://gitlab.dlr.de/ml-with-flow/tor-distribution -b SingleAgent
+    git clone https://gitlab.dlr.de/ml-with-flow/tor-distribution -b MultiAgent
     cd tor-distibution
 
 
