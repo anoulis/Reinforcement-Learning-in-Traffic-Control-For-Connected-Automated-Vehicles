@@ -6,7 +6,7 @@ This project aims to train multi agents with reinforcement learning to distribut
 ## Installation Requirements
 1.) Download the code of the MultiAgent branch
 
-    git clone https://gitlab.dlr.de/ml-with-flow/tor-distribution -b MultiAgent
+    git clone https://github.com/anoulis/Reinforcement-Learning-in-Traffic-Control-For-Connected-Automated-Vehicles.git -b MultiAgent
     cd tor-distibution
 
 
