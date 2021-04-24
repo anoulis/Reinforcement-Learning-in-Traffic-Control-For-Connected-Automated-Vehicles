@@ -6,7 +6,7 @@ This project aims to train an agent with reinforcement learning to distribute ta
 ## Installation Requirements
 1.) Download the code of the SingleAgent branch
 
-    git clone https://gitlab.dlr.de/ml-with-flow/tor-distribution -b SingleAgent
+    git clone https://github.com/anoulis/Reinforcement-Learning-in-Traffic-Control-For-Connected-Automated-Vehicles.git -b SingleAgent
     cd tor-distibution
 
 
