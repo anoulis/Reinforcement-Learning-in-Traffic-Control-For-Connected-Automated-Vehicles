@@ -28,7 +28,7 @@ git checkout MultiAgent
 You can clone also every branch seperately by the following
 
 ```
-git clone https://gitlab.dlr.de/ml-with-flow/tor-distribution.git -b SingleAgent
-git clone https://gitlab.dlr.de/ml-with-flow/tor-distribution.git -b MultiAgent
+git clone https://github.com/anoulis/Reinforcement-Learning-in-Traffic-Control-For-Connected-Automated-Vehicles.git -b SingleAgent
+git clone https://github.com/anoulis/Reinforcement-Learning-in-Traffic-Control-For-Connected-Automated-Vehicles.git -b MultiAgent
 
 ```
